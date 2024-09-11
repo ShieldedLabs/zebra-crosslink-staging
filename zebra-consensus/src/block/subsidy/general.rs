@@ -65,24 +65,24 @@ pub fn block_subsidy(
     network: &Network,
     zsf_balance: Amount<NonNegative>,
 ) -> Result<Amount<NonNegative>, SubsidyError> {
-    let zsf_activation_height = ZFuture
-        .activation_height(network)
-        .expect("ZFuture activation height should be available");
+    // let zsf_activation_height = ZFuture
+    //     .activation_height(network)
+    //     .expect("ZFuture activation height should be available");
 
-    if height < zsf_activation_height {
+    // if height < zsf_activation_height {
         block_subsidy_pre_zsf(height, network)
-    } else {
-        let zsf_balance: i64 = zsf_balance.into();
-        let zsf_balance: i128 = zsf_balance.into();
-        const BLOCK_SUBSIDY_DENOMINATOR: i128 = 10_000_000_000;
-        const BLOCK_SUBSIDY_NUMERATOR: i128 = 4_126;
+    // } else {
+    //     let zsf_balance: i64 = zsf_balance.into();
+    //     let zsf_balance: i128 = zsf_balance.into();
+    //     const BLOCK_SUBSIDY_DENOMINATOR: i128 = 10_000_000_000;
+    //     const BLOCK_SUBSIDY_NUMERATOR: i128 = 4_126;
 
-        // calculate the block subsidy (in zatoshi) using the ZSF balance, note the rounding up
-        let subsidy = (zsf_balance * BLOCK_SUBSIDY_NUMERATOR + (BLOCK_SUBSIDY_DENOMINATOR - 1))
-            / BLOCK_SUBSIDY_DENOMINATOR;
+    //     // calculate the block subsidy (in zatoshi) using the ZSF balance, note the rounding up
+    //     let subsidy = (zsf_balance * BLOCK_SUBSIDY_NUMERATOR + (BLOCK_SUBSIDY_DENOMINATOR - 1))
+    //         / BLOCK_SUBSIDY_DENOMINATOR;
 
-        Ok(subsidy.try_into().expect("subsidy should fit in Amount"))
-    }
+    //     Ok(subsidy.try_into().expect("subsidy should fit in Amount"))
+    // }
 }
 
 /// `BlockSubsidy(height)` as described in [protocol specification §7.8][7.8]

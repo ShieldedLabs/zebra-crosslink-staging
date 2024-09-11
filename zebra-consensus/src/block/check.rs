@@ -323,14 +323,14 @@ pub fn miner_fees_are_valid(
     };
 
     // Verify that the ZSF deposit is at least the minimum required amount (ZIP-235).
-    #[cfg(zcash_unstable = "zsf")]
-    if network_upgrade == NetworkUpgrade::ZFuture {
-        let minimum_zsf_deposit = ((block_miner_fees * 6).unwrap() / 10).unwrap();
-
-        if zsf_deposit < minimum_zsf_deposit {
-            Err(SubsidyError::InvalidZsfDepositAmount)?
-        }
-    }
+    // #[cfg(zcash_unstable = "zsf")]
+    // if network_upgrade == NetworkUpgrade::ZFuture {
+    //     let minimum_zsf_deposit = ((block_miner_fees * 6).unwrap() / 10).unwrap();
+    //
+    //     if zsf_deposit < minimum_zsf_deposit {
+    //         Err(SubsidyError::InvalidZsfDepositAmount)?
+    //     }
+    // }
 
     Ok(())
 }
