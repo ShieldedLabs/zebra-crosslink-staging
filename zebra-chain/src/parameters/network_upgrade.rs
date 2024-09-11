@@ -3,7 +3,7 @@
 use NetworkUpgrade::*;
 
 use crate::block;
-use crate::parameters::{Network, Network::*};
+use crate::parameters::{constants::magics, Network, Network::*};
 
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
@@ -484,6 +484,9 @@ impl NetworkUpgrade {
         height: block::Height,
     ) -> Option<Duration> {
         match (network, height) {
+            (Network::Testnet(params), _height) if params.network_magic() == magics::REGTEST => {
+                Some(Duration::seconds(0))
+            }
             // TODO: Move `TESTNET_MINIMUM_DIFFICULTY_START_HEIGHT` to a field on testnet::Parameters (#8364)
             (Network::Testnet(_params), height)
                 if height < TESTNET_MINIMUM_DIFFICULTY_START_HEIGHT =>
@@ -523,7 +526,7 @@ impl NetworkUpgrade {
         if let Some(min_difficulty_gap) =
             NetworkUpgrade::minimum_difficulty_spacing_for_height(network, block_height)
         {
-            block_time_gap > min_difficulty_gap
+            block_time_gap >= min_difficulty_gap
         } else {
             false
         }
