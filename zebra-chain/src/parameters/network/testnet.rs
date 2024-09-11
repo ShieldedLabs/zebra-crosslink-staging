@@ -284,7 +284,7 @@ impl ParametersBuilder {
     /// Sets the network name to be used in the [`Parameters`] being built.
     pub fn with_network_magic(mut self, network_magic: Magic) -> Self {
         assert!(
-            [magics::MAINNET, magics::REGTEST]
+            [magics::MAINNET]
                 .into_iter()
                 .all(|reserved_magic| network_magic != reserved_magic),
             "network magic should be distinct from reserved network magics"
