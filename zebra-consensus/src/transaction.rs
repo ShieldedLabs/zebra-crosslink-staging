@@ -456,17 +456,21 @@ where
             // Get the `value_balance` to calculate the transaction fee.
             let value_balance = tx.value_balance(&spent_utxos);
 
+            let zsf_deposit = match *tx {
+                #[cfg(feature="zsf")]
+                Transaction::ZFuture{ .. } => tx.zsf_deposit(),
+                _ => Amount::zero()
+            };
+
             // Calculate the fee only for non-coinbase transactions.
             let mut miner_fee = None;
             if !tx.is_coinbase() {
                 // TODO: deduplicate this code with remaining_transaction_value()?
-                miner_fee = match value_balance {
-                    Ok(vb) => match vb.remaining_transaction_value() {
-                        Ok(tx_rtv) => Some(tx_rtv),
-                        Err(_) => return Err(TransactionError::IncorrectFee),
-                    },
-                    Err(_) => return Err(TransactionError::IncorrectFee),
-                };
+                miner_fee = value_balance
+                    .map(|vb| vb.remaining_transaction_value())
+                    .map(|tx_rtv| tx_rtv - zsf_deposit)
+                    .or(Err(TransactionError::IncorrectFee))?
+                    .ok();
             }
 
             let legacy_sigop_count = cached_ffi_transaction.legacy_sigop_count()?;
