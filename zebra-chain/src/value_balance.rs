@@ -396,7 +396,7 @@ impl ValueBalance<NonNegative> {
         })
     }
 
-    #[cfg(feature = "zsf")]
+    #[cfg(zcash_unstable = "zsf")]
     pub fn zsf_balance(&self) -> Amount<NonNegative> {
         let max_money: Amount<NonNegative> = MAX_MONEY
             .try_into()

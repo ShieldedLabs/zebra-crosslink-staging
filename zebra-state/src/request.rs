@@ -625,7 +625,7 @@ pub enum Request {
     /// with the current best chain tip.
     Tip,
 
-    #[cfg(feature = "zsf")]
+    #[cfg(zcash_unstable = "zsf")]
     TipPoolValues,
 
     /// Computes a block locator object based on the current best chain.
@@ -781,7 +781,7 @@ impl Request {
             Request::AwaitUtxo(_) => "await_utxo",
             Request::Depth(_) => "depth",
             Request::Tip => "tip",
-            #[cfg(feature = "zsf")]
+            #[cfg(zcash_unstable = "zsf")]
             Request::TipPoolValues => "tip_pool_values",
             Request::BlockLocator => "block_locator",
             Request::Transaction(_) => "transaction",

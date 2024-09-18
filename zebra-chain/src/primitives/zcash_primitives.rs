@@ -165,7 +165,7 @@ impl TryFrom<&Transaction> for zp_tx::Transaction {
             Transaction::V5 {
                 network_upgrade, ..
             } => network_upgrade,
-            #[cfg(feature = "zsf")]
+            #[cfg(zcash_unstable = "zsf")]
             Transaction::ZFuture {
                 network_upgrade, ..
             } => network_upgrade,

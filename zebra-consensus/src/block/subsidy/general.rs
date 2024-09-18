@@ -59,7 +59,7 @@ pub fn halving_divisor(height: Height, network: &Network) -> Option<u64> {
     }
 }
 
-#[cfg(feature = "zsf")]
+#[cfg(zcash_unstable = "zsf")]
 pub fn block_subsidy(
     height: Height,
     network: &Network,

@@ -112,7 +112,7 @@ impl NonEmptyHistoryTree {
                 )?;
                 InnerHistoryTree::OrchardOnward(tree)
             }
-            #[cfg(feature = "zsf")]
+            #[cfg(zcash_unstable = "zsf")]
             NetworkUpgrade::ZFuture => {
                 let tree = Tree::<OrchardOnward>::new_from_cache(
                     network,
@@ -176,7 +176,7 @@ impl NonEmptyHistoryTree {
                 )?;
                 (InnerHistoryTree::OrchardOnward(tree), entry)
             }
-            #[cfg(feature = "zsf")]
+            #[cfg(zcash_unstable = "zsf")]
             NetworkUpgrade::ZFuture => {
                 let (tree, entry) = Tree::<OrchardOnward>::new_from_block(
                     network,

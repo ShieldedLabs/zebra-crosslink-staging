@@ -220,7 +220,7 @@ pub fn proposal_block_from_template(
         NetworkUpgrade::Nu5 | NetworkUpgrade::Nu6 => {
             block_commitments_hash.bytes_in_serialized_order().into()
         }
-        #[cfg(feature = "zsf")]
+        #[cfg(zcash_unstable = "zsf")]
         NetworkUpgrade::ZFuture => block_commitments_hash.bytes_in_serialized_order().into(),
     };
 

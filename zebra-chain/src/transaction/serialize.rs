@@ -7,10 +7,10 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use halo2::pasta::group::ff::PrimeField;
 use hex::FromHex;
 use reddsa::{orchard::Binding, orchard::SpendAuth, Signature};
-#[cfg(feature = "zsf")]
+#[cfg(zcash_unstable = "zsf")]
 use zcash_primitives::transaction::ZFUTURE_VERSION_GROUP_ID;
 
-#[cfg(feature = "zsf")]
+#[cfg(zcash_unstable = "zsf")]
 use crate::parameters::TX_ZFUTURE_VERSION_GROUP_ID;
 
 use crate::{
@@ -679,7 +679,7 @@ impl ZcashSerialize for Transaction {
                 orchard_shielded_data.zcash_serialize(&mut writer)?;
             }
 
-            #[cfg(feature = "zsf")]
+            #[cfg(zcash_unstable = "zsf")]
             Transaction::ZFuture {
                 network_upgrade,
                 lock_time,
@@ -982,7 +982,7 @@ impl ZcashDeserialize for Transaction {
                     orchard_shielded_data,
                 })
             }
-            #[cfg(feature = "zsf")]
+            #[cfg(zcash_unstable = "zsf")]
             (ZFUTURE_TX_VERSION, true) => {
                 // Denoted as `nVersionGroupId` in the spec.
                 let id = limited_reader.read_u32::<LittleEndian>()?;

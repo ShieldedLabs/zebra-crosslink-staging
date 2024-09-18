@@ -326,7 +326,7 @@ impl TryFrom<ReadResponse> for Response {
 
             ReadResponse::ValuePools(value_pools) => Ok(Response::ValuePools(value_pools)),
 
-            #[cfg(feature = "zsf")]
+            #[cfg(zcash_unstable = "zsf")]
             ReadResponse::TipPoolValues { tip_height, tip_hash, value_balance } => Ok(Response::TipPoolValues { tip_height, tip_hash, value_balance }),
 
             #[cfg(feature = "getblocktemplate-rpcs")]

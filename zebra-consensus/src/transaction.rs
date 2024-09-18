@@ -413,7 +413,7 @@ where
                     sapling_shielded_data,
                     orchard_shielded_data,
                 )?,
-                #[cfg(feature = "zsf")]
+                #[cfg(zcash_unstable = "zsf")]
                 Transaction::ZFuture {
                     sapling_shielded_data,
                     orchard_shielded_data,
@@ -457,7 +457,7 @@ where
             let value_balance = tx.value_balance(&spent_utxos);
 
             let zsf_deposit = match *tx {
-                #[cfg(feature="zsf")]
+                #[cfg(zcash_unstable = "zsf")]
                 Transaction::ZFuture{ .. } => tx.zsf_deposit(),
                 _ => Amount::zero()
             };
@@ -705,7 +705,7 @@ where
                 network_upgrade,
             )),
 
-            #[cfg(feature = "zsf")]
+            #[cfg(zcash_unstable = "zsf")]
             NetworkUpgrade::ZFuture => Ok(()),
         }
     }
@@ -787,7 +787,7 @@ where
             // Note: Here we verify the transaction version number of the above rule, the group
             // id is checked in zebra-chain crate, in the transaction serialize.
             NetworkUpgrade::Nu5 | NetworkUpgrade::Nu6 => Ok(()),
-            #[cfg(feature = "zsf")]
+            #[cfg(zcash_unstable = "zsf")]
             NetworkUpgrade::ZFuture => Ok(()),
 
             // Does not support V5 transactions
@@ -805,7 +805,7 @@ where
     }
 
     /// Verify a ZFUTURE transaction.
-    #[cfg(feature = "zsf")]
+    #[cfg(zcash_unstable = "zsf")]
     fn verify_zfuture_transaction(
         request: &Request,
         network: &Network,

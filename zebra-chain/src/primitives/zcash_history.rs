@@ -290,7 +290,7 @@ impl Version for zcash_history::V1 {
                 end_height: height.0 as u64,
                 sapling_tx: sapling_tx_count,
             },
-            #[cfg(feature = "zsf")]
+            #[cfg(zcash_unstable = "zsf")]
             NetworkUpgrade::ZFuture => zcash_history::NodeData {
                 consensus_branch_id: branch_id.into(),
                 subtree_commitment: block_hash,

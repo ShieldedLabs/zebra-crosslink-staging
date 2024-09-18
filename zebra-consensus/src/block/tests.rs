@@ -582,7 +582,7 @@ fn miner_fees_validation_failure() -> Result<(), Report> {
     Ok(())
 }
 
-#[cfg(feature = "zsf")]
+#[cfg(zcash_unstable = "zsf")]
 #[test]
 fn miner_fees_validation_fails_when_zsf_deposit_is_zero() -> Result<(), Report> {
     let transparent_value_balance = 100_001_000.try_into().unwrap();

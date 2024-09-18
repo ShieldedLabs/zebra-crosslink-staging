@@ -1008,7 +1008,7 @@ fn binding_signatures_for_network(network: Network) {
                         .expect("must pass verification");
                     }
                 }
-                #[cfg(feature = "zsf")]
+                #[cfg(zcash_unstable = "zsf")]
                 Transaction::ZFuture {
                     sapling_shielded_data,
                     ..

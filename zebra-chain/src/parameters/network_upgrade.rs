@@ -15,7 +15,7 @@ use hex::{FromHex, ToHex};
 use proptest_derive::Arbitrary;
 
 /// A list of network upgrades in the order that they must be activated.
-#[cfg(not(feature = "zsf"))]
+#[cfg(not(zcash_unstable = "zsf"))]
 pub const NETWORK_UPGRADES_IN_ORDER: [NetworkUpgrade; 9] = [
     Genesis,
     BeforeOverwinter,
@@ -28,7 +28,7 @@ pub const NETWORK_UPGRADES_IN_ORDER: [NetworkUpgrade; 9] = [
     Nu6,
 ];
 
-#[cfg(feature = "zsf")]
+#[cfg(zcash_unstable = "zsf")]
 pub const NETWORK_UPGRADES_IN_ORDER: [NetworkUpgrade; 10] = [
     Genesis,
     BeforeOverwinter,
@@ -39,7 +39,7 @@ pub const NETWORK_UPGRADES_IN_ORDER: [NetworkUpgrade; 10] = [
     Canopy,
     Nu5,
     Nu6,
-    #[cfg(feature = "zsf")]
+    #[cfg(zcash_unstable = "zsf")]
     ZFuture,
 ];
 
@@ -76,7 +76,7 @@ pub enum NetworkUpgrade {
     Nu5,
     /// The Zcash protocol after the NU6 upgrade.
     Nu6,
-    #[cfg(feature = "zsf")]
+    #[cfg(zcash_unstable = "zsf")]
     #[serde(rename = "ZFuture")]
     #[allow(non_snake_case)]
     ZFuture,
@@ -124,7 +124,7 @@ const FAKE_MAINNET_ACTIVATION_HEIGHTS: &[(block::Height, NetworkUpgrade)] = &[
     (block::Height(30), Canopy),
     (block::Height(35), Nu5),
     (block::Height(40), Nu6),
-    #[cfg(feature = "zsf")]
+    #[cfg(zcash_unstable = "zsf")]
     (block::Height(45), ZFuture),
 ];
 
@@ -163,7 +163,7 @@ const FAKE_TESTNET_ACTIVATION_HEIGHTS: &[(block::Height, NetworkUpgrade)] = &[
     (block::Height(30), Canopy),
     (block::Height(35), Nu5),
     (block::Height(40), Nu6),
-    #[cfg(feature = "zsf")]
+    #[cfg(zcash_unstable = "zsf")]
     (block::Height(45), ZFuture),
 ];
 
@@ -241,7 +241,7 @@ pub(crate) const CONSENSUS_BRANCH_IDS: &[(NetworkUpgrade, ConsensusBranchId)] = 
     (Canopy, ConsensusBranchId(0xe9ff75a6)),
     (Nu5, ConsensusBranchId(0xc2d6d0b4)),
     (Nu6, ConsensusBranchId(0xc8e71055)),
-    #[cfg(feature = "zsf")]
+    #[cfg(zcash_unstable = "zsf")]
     (ZFuture, ConsensusBranchId(0xffff_ffff)),
 ];
 
@@ -359,11 +359,11 @@ impl NetworkUpgrade {
             Heartwood => Some(Canopy),
             Canopy => Some(Nu5),
             Nu5 => Some(Nu6),
-            #[cfg(not(feature = "zsf"))]
+            #[cfg(not(zcash_unstable = "zsf"))]
             Nu6 => None,
-            #[cfg(feature = "zsf")]
+            #[cfg(zcash_unstable = "zsf")]
             Nu6 => Some(ZFuture),
-            #[cfg(feature = "zsf")]
+            #[cfg(zcash_unstable = "zsf")]
             ZFuture => None,
         }
     }
@@ -442,7 +442,7 @@ impl NetworkUpgrade {
         let spacing_seconds = match self {
             Genesis | BeforeOverwinter | Overwinter | Sapling => PRE_BLOSSOM_POW_TARGET_SPACING,
             Blossom | Heartwood | Canopy | Nu5 | Nu6 => POST_BLOSSOM_POW_TARGET_SPACING.into(),
-            #[cfg(feature = "zsf")]
+            #[cfg(zcash_unstable = "zsf")]
             ZFuture => POST_BLOSSOM_POW_TARGET_SPACING.into(),
         };
 
@@ -565,7 +565,7 @@ impl From<zcash_protocol::consensus::NetworkUpgrade> for NetworkUpgrade {
             zcash_protocol::consensus::NetworkUpgrade::Canopy => Self::Canopy,
             zcash_protocol::consensus::NetworkUpgrade::Nu5 => Self::Nu5,
             zcash_protocol::consensus::NetworkUpgrade::Nu6 => Self::Nu6,
-            #[cfg(feature = "zsf")]
+            #[cfg(zcash_unstable = "zsf")]
             zcash_protocol::consensus::NetworkUpgrade::ZFuture => Self::ZFuture,
         }
     }

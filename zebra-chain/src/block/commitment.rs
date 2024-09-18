@@ -139,7 +139,7 @@ impl Commitment {
             (Nu5 | Nu6, _) => Ok(ChainHistoryBlockTxAuthCommitment(
                 ChainHistoryBlockTxAuthCommitmentHash(bytes),
             )),
-            #[cfg(feature = "zsf")]
+            #[cfg(zcash_unstable = "zsf")]
             (ZFuture, _) => Ok(ChainHistoryBlockTxAuthCommitment(
                 ChainHistoryBlockTxAuthCommitmentHash(bytes),
             )),

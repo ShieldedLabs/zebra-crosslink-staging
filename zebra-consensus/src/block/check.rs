@@ -252,7 +252,7 @@ pub fn transaction_miner_fees_are_valid(
     let orchard_value_balance = coinbase_tx.orchard_value_balance().orchard_amount();
 
     // Coinbase transaction can still have a ZSF deposit
-    #[cfg(feature = "zsf")]
+    #[cfg(zcash_unstable = "zsf")]
     let zsf_deposit = coinbase_tx
         .zsf_deposit()
         .constrain()
@@ -262,7 +262,7 @@ pub fn transaction_miner_fees_are_valid(
         transparent_value_balance,
         sapling_value_balance,
         orchard_value_balance,
-        #[cfg(feature = "zsf")]
+        #[cfg(zcash_unstable = "zsf")]
         zsf_deposit,
         expected_block_subsidy,
         block_miner_fees,
@@ -275,7 +275,7 @@ pub fn miner_fees_are_valid(
     transparent_value_balance: Amount,
     sapling_value_balance: Amount,
     orchard_value_balance: Amount,
-    #[cfg(feature = "zsf")] zsf_deposit: Amount,
+    #[cfg(zcash_unstable = "zsf")] zsf_deposit: Amount,
     expected_block_subsidy: Amount<NonNegative>,
     block_miner_fees: Amount<NonNegative>,
     expected_deferred_amount: Amount<NonNegative>,
@@ -293,11 +293,11 @@ pub fn miner_fees_are_valid(
     //
     // The expected lockbox funding stream output of the coinbase transaction is also subtracted
     // from the block subsidy value plus the transaction fees paid by transactions in this block.
-    #[cfg(feature = "zsf")]
+    #[cfg(zcash_unstable = "zsf")]
     let left = (transparent_value_balance - sapling_value_balance - orchard_value_balance
         + zsf_deposit)
         .map_err(|_| SubsidyError::SumOverflow)?;
-    #[cfg(not(feature = "zsf"))]
+    #[cfg(not(zcash_unstable = "zsf"))]
     let left = (transparent_value_balance - sapling_value_balance - orchard_value_balance)
         .map_err(|_| SubsidyError::SumOverflow)?;
     let right = (expected_block_subsidy + block_miner_fees - expected_deferred_amount)
@@ -323,7 +323,7 @@ pub fn miner_fees_are_valid(
     };
 
     // Verify that the ZSF deposit is at least the minimum required amount (ZIP-235).
-    #[cfg(feature = "zsf")]
+    #[cfg(zcash_unstable = "zsf")]
     if network_upgrade == NetworkUpgrade::ZFuture {
         let minimum_zsf_deposit = ((block_miner_fees * 6).unwrap() / 10).unwrap();
 

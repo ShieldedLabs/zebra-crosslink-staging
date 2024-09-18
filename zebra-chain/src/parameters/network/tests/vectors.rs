@@ -31,7 +31,7 @@ fn check_parameters_impl() {
         zp_consensus::NetworkUpgrade::Heartwood,
         zp_consensus::NetworkUpgrade::Canopy,
         zp_consensus::NetworkUpgrade::Nu5,
-        #[cfg(feature = "zsf")]
+        #[cfg(zcash_unstable = "zsf")]
         zp_consensus::NetworkUpgrade::ZFuture,
     ];
 
@@ -111,9 +111,9 @@ fn activates_network_upgrades_correctly() {
     let expected_activation_height = 1;
     let network = testnet::Parameters::build()
         .with_activation_heights(ConfiguredActivationHeights {
-            #[cfg(not(feature = "zsf"))]
+            #[cfg(not(zcash_unstable = "zsf"))]
             nu6: Some(expected_activation_height),
-            #[cfg(feature = "zsf")]
+            #[cfg(zcash_unstable = "zsf")]
             zfuture: Some(expected_activation_height),
             ..Default::default()
         })
@@ -146,7 +146,7 @@ fn activates_network_upgrades_correctly() {
         (Height(1), NetworkUpgrade::Canopy),
         // TODO: Remove this once the testnet parameters are being serialized.
         (Height(100), NetworkUpgrade::Nu5),
-        #[cfg(feature = "zsf")]
+        #[cfg(zcash_unstable = "zsf")]
         (Height(101), NetworkUpgrade::ZFuture),
     ];
 

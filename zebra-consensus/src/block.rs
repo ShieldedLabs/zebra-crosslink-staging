@@ -216,9 +216,9 @@ where
                 .map_err(VerifyBlockError::Time)?;
             let coinbase_tx = check::coinbase_is_first(&block)?;
 
-            #[cfg(not(feature = "zsf"))]
+            #[cfg(not(zcash_unstable = "zsf"))]
             let expected_block_subsidy = subsidy::general::block_subsidy(height, &network)?;
-            #[cfg(feature = "zsf")]
+            #[cfg(zcash_unstable = "zsf")]
             let expected_block_subsidy = {
                 let zsf_balance = match state_service
                     .ready()
