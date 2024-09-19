@@ -329,6 +329,11 @@ impl TryFrom<ReadResponse> for Response {
             #[cfg(zcash_unstable = "zsf")]
             ReadResponse::TipPoolValues { tip_height, tip_hash, value_balance } => Ok(Response::TipPoolValues { tip_height, tip_hash, value_balance }),
 
+            #[cfg(not(zcash_unstable = "zsf"))]
+            ReadResponse::TipPoolValues { .. } => {
+                Err("there is no corresponding Response for this ReadResponse")
+            }
+
             #[cfg(feature = "getblocktemplate-rpcs")]
             ReadResponse::ValidBlockProposal => Ok(Response::ValidBlockProposal),
 

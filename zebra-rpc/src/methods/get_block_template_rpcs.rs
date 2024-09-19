@@ -27,8 +27,12 @@ use zebra_chain::{
     work::difficulty::{ParameterDifficulty as _, U256},
 };
 use zebra_consensus::{
-    block_subsidy, funding_stream_address, funding_stream_values, miner_subsidy, RouterError,
+    block_subsidy_pre_zsf, funding_stream_address, funding_stream_values, miner_subsidy, RouterError,
 };
+
+#[cfg(zcash_unstable = "zsf")]
+use zebra_consensus::block_subsidy;
+
 use zebra_network::AddressBookPeers;
 use zebra_node_services::mempool;
 use zebra_state::{ReadRequest, ReadResponse};
@@ -1193,6 +1197,7 @@ where
                         data: None,
                     });
 
+            #[cfg(zcash_unstable = "zsf")]
             let zsf_balance = match tip_pool_values? {
                 ReadResponse::TipPoolValues {
                     tip_hash: _,
@@ -1202,8 +1207,13 @@ where
                 _ => unreachable!("wrong response to Request::KnownBlock"),
             };
 
+            #[cfg(zcash_unstable = "zsf")]
             let total_block_subsidy =
                 block_subsidy(height, &network, zsf_balance).map_server_error()?;
+            #[cfg(not(zcash_unstable = "zsf"))]
+            let total_block_subsidy =
+                block_subsidy_pre_zsf(height, &network).map_server_error()?;
+
             let miner_subsidy =
                 miner_subsidy(height, &network, total_block_subsidy).map_server_error()?;
 

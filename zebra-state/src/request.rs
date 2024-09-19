@@ -1126,6 +1126,7 @@ impl TryFrom<Request> for ReadRequest {
     fn try_from(request: Request) -> Result<ReadRequest, Self::Error> {
         match request {
             Request::Tip => Ok(ReadRequest::Tip),
+            #[cfg(zcash_unstable = "zsf")]
             Request::TipPoolValues => Ok(ReadRequest::TipPoolValues),
             Request::Depth(hash) => Ok(ReadRequest::Depth(hash)),
             Request::BestChainNextMedianTimePast => Ok(ReadRequest::BestChainNextMedianTimePast),

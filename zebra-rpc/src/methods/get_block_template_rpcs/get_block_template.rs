@@ -20,8 +20,11 @@ use zebra_chain::{
     transparent,
 };
 use zebra_consensus::{
-    block_subsidy, funding_stream_address, funding_stream_values, miner_subsidy,
+    block_subsidy_pre_zsf, funding_stream_address, funding_stream_values, miner_subsidy,
 };
+#[cfg(zcash_unstable = "zsf")]
+use zebra_consensus::block_subsidy;
+
 use zebra_node_services::mempool;
 use zebra_state::GetBlockTemplateChainInfo;
 
@@ -376,9 +379,13 @@ pub fn standard_coinbase_outputs(
     miner_fee: Amount<NonNegative>,
     like_zcashd: bool,
 ) -> Vec<(Amount<NonNegative>, transparent::Script)> {
-    let max_money = MAX_MONEY.try_into().expect("MAX_MONEY is a valid amount");
+    #[cfg(zcash_unstable = "zsf")]
     let expected_block_subsidy =
-        block_subsidy(height, network, max_money).expect("valid block subsidy");
+        block_subsidy(height, network, MAX_MONEY.try_into().expect("MAX_MONEY is a valid amount")).expect("valid block subsidy");
+    #[cfg(not(zcash_unstable = "zsf"))]
+    let expected_block_subsidy =
+        block_subsidy_pre_zsf(height, network).expect("valid block subsidy");
+
     let funding_streams = funding_stream_values(height, network, expected_block_subsidy)
         .expect("funding stream value calculations are valid for reasonable chain heights");
 

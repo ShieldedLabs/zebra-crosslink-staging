@@ -50,10 +50,14 @@ pub use block::check::difficulty_is_valid;
 pub use block::{
     subsidy::{
         funding_streams::{funding_stream_address, funding_stream_values, new_coinbase_script},
-        general::{block_subsidy, miner_subsidy},
+        general::{block_subsidy_pre_zsf, miner_subsidy},
     },
     Request, VerifyBlockError, MAX_BLOCK_SIGOPS,
 };
+
+#[cfg(zcash_unstable = "zsf")]
+pub use block::subsidy::general::block_subsidy;
+
 pub use checkpoint::{
     list::ParameterCheckpoint, CheckpointList, VerifyCheckpointError, MAX_CHECKPOINT_BYTE_COUNT,
     MAX_CHECKPOINT_HEIGHT_GAP,

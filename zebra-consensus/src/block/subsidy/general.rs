@@ -337,42 +337,41 @@ mod test {
         // https://z.cash/support/faq/#what-is-slow-start-mining
         assert_eq!(
             Amount::<NonNegative>::try_from(1_250_000_000)?,
-            block_subsidy(
+            block_subsidy_pre_zsf(
                 (network.slow_start_interval() + 1).unwrap(),
-                network,
-                Amount::zero()
+                network
             )?
         );
         assert_eq!(
             Amount::<NonNegative>::try_from(1_250_000_000)?,
-            block_subsidy((blossom_height - 1).unwrap(), network, Amount::zero())?
+            block_subsidy_pre_zsf((blossom_height - 1).unwrap(), network)?
         );
 
         // After Blossom the block subsidy is reduced to 6.25 ZEC without halving
         // https://z.cash/upgrade/blossom/
         assert_eq!(
             Amount::<NonNegative>::try_from(625_000_000)?,
-            block_subsidy(blossom_height, network, Amount::zero())?
+            block_subsidy_pre_zsf(blossom_height, network)?
         );
 
         // After the 1st halving, the block subsidy is reduced to 3.125 ZEC
         // https://z.cash/upgrade/canopy/
         assert_eq!(
             Amount::<NonNegative>::try_from(312_500_000)?,
-            block_subsidy(first_halving_height, network, Amount::zero())?
+            block_subsidy_pre_zsf(first_halving_height, network)?
         );
 
         // After the 2nd halving, the block subsidy is reduced to 1.5625 ZEC
         // See "7.8 Calculation of Block Subsidy and Founders' Reward"
         assert_eq!(
             Amount::<NonNegative>::try_from(156_250_000)?,
-            block_subsidy(
+            block_subsidy_pre_zsf(
                 (first_halving_height + POST_BLOSSOM_HALVING_INTERVAL).unwrap(),
-                network,
-                Amount::zero()
+                network
             )?
         );
 
+        #[cfg(zcash_unstable = "zsf")]
         let zsf_activation_height = ZFuture
             .activation_height(network)
             .expect("ZFuture activation height should be available");
@@ -388,18 +387,21 @@ mod test {
         // );
 
         // After ZSF activation the block subsidy is 0 if ZSF balance is 0
+        #[cfg(zcash_unstable = "zsf")]
         assert_eq!(
             Amount::<NonNegative>::try_from(0)?,
             block_subsidy(zsf_activation_height, network, Amount::zero())?
         );
 
         // After ZSF activation the block subsidy is 1 if ZSF balance is 1
+        #[cfg(zcash_unstable = "zsf")]
         assert_eq!(
             Amount::<NonNegative>::try_from(1)?,
             block_subsidy(zsf_activation_height, network, 1i64.try_into().unwrap())?
         );
 
         // After ZSF activation the block subsidy is 866460000 zatoshis when ZSF balance is MAX_MONEY
+        #[cfg(zcash_unstable = "zsf")]
         assert_eq!(
             Amount::<NonNegative>::try_from(866460000)?,
             block_subsidy(

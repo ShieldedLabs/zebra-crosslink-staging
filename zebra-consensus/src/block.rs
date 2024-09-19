@@ -217,7 +217,7 @@ where
             let coinbase_tx = check::coinbase_is_first(&block)?;
 
             #[cfg(not(zcash_unstable = "zsf"))]
-            let expected_block_subsidy = subsidy::general::block_subsidy(height, &network)?;
+            let expected_block_subsidy = subsidy::general::block_subsidy_pre_zsf(height, &network)?;
             #[cfg(zcash_unstable = "zsf")]
             let expected_block_subsidy = {
                 let zsf_balance = match state_service
