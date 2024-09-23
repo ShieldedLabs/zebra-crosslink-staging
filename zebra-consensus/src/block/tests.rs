@@ -612,6 +612,78 @@ fn miner_fees_validation_fails_when_zsf_deposit_is_zero() -> Result<(), Report> 
     Ok(())
 }
 
+#[cfg(zcash_unstable = "zsf")]
+#[test]
+fn miner_fees_validation_succeeds_when_zsf_deposit_is_correct() -> Result<(), Report> {
+    let transparent_value_balance = 100_001_000.try_into().unwrap();
+    let sapling_value_balance = Amount::zero();
+    let orchard_value_balance = Amount::zero();
+    let zsf_deposit = 600.try_into().unwrap();
+    let expected_block_subsidy_pre_zsf = (100_000_600).try_into().unwrap();
+    let block_miner_fees = 1000.try_into().unwrap();
+    let expected_deferred_amount = Amount::zero();
+
+    assert_eq!(
+        check::miner_fees_are_valid(
+            transparent_value_balance,
+            sapling_value_balance,
+            orchard_value_balance,
+            zsf_deposit,
+            expected_block_subsidy_pre_zsf,
+            block_miner_fees,
+            expected_deferred_amount,
+            NetworkUpgrade::ZFuture
+        ),
+        Ok(())
+    );
+
+    Ok(())
+}
+
+#[cfg(zcash_unstable = "zsf")]
+#[test]
+fn miner_fees_validation_fails_when_zsf_deposit_is_incorrect() -> Result<(), Report> {
+    let transparent_value_balance = 100_001_000.try_into().unwrap();
+    let sapling_value_balance = Amount::zero();
+    let orchard_value_balance = Amount::zero();
+    let zsf_deposit = 500.try_into().unwrap();
+    let expected_block_subsidy_pre_zsf = (100_000_500).try_into().unwrap();
+    let block_miner_fees = 1000.try_into().unwrap();
+    let expected_deferred_amount = Amount::zero();
+
+    assert_eq!(
+        check::miner_fees_are_valid(
+            transparent_value_balance,
+            sapling_value_balance,
+            orchard_value_balance,
+            zsf_deposit,
+            expected_block_subsidy_pre_zsf,
+            block_miner_fees,
+            expected_deferred_amount,
+            NetworkUpgrade::ZFuture
+        ),
+        Err(BlockError::Transaction(TransactionError::Subsidy(
+            SubsidyError::InvalidZsfDepositAmount,
+        )))
+    );
+
+    Ok(())
+}
+
+#[cfg(zcash_unstable = "zsf")]
+#[test]
+fn block_subsidy_is_correct_for_fake_mainnet() -> Result<(), Report> {
+    use crate::block_subsidy;
+
+    let height = block::Height(50);
+
+    assert_eq!(
+        block_subsidy(height, &Network::Mainnet, 5_000_000.try_into().unwrap()),
+        Ok(3.try_into().unwrap())
+    );
+    Ok(())
+}
+
 #[test]
 fn time_is_valid_for_historical_blocks() -> Result<(), Report> {
     let _init_guard = zebra_test::init();
