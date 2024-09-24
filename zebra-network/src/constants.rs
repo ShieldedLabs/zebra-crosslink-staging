@@ -338,7 +338,7 @@ pub const TIMESTAMP_TRUNCATION_SECONDS: u32 = 30 * 60;
 /// The current protocol version typically changes before Mainnet and Testnet
 /// network upgrades.
 #[cfg(not(zcash_unstable = "zsf"))]
-pub const CURRENT_NETWORK_PROTOCOL_VERSION: Version = Version(170_100);
+pub const CURRENT_NETWORK_PROTOCOL_VERSION: Version = Version(170_110);
 #[cfg(zcash_unstable = "zsf")]
 pub const CURRENT_NETWORK_PROTOCOL_VERSION: Version = Version(170_140);
 

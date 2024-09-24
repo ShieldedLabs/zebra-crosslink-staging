@@ -243,6 +243,10 @@ pub enum ReadResponse {
     #[cfg(feature = "getblocktemplate-rpcs")]
     /// Response to [`ReadRequest::CheckBlockProposalValidity`]
     ValidBlockProposal,
+
+    #[cfg(feature = "getblocktemplate-rpcs")]
+    /// Response to [`ReadRequest::TipBlockSize`]
+    TipBlockSize(Option<usize>),
 }
 
 /// A structure with the information needed from the state to build a `getblocktemplate` RPC response.
@@ -338,7 +342,7 @@ impl TryFrom<ReadResponse> for Response {
             ReadResponse::ValidBlockProposal => Ok(Response::ValidBlockProposal),
 
             #[cfg(feature = "getblocktemplate-rpcs")]
-            ReadResponse::ChainInfo(_) | ReadResponse::SolutionRate(_) => {
+            ReadResponse::ChainInfo(_) | ReadResponse::SolutionRate(_) | ReadResponse::TipBlockSize(_) => {
                 Err("there is no corresponding Response for this ReadResponse")
             }
         }
