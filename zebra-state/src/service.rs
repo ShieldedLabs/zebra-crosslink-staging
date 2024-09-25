@@ -1116,14 +1116,12 @@ impl Service<Request> for StateService {
             }
 
             #[cfg(zcash_unstable = "zsf")]
-            Request::TipPoolValues => {
+            Request::BlockPoolValuesByHeight(height) => {
                 // Redirect the request to the concurrent ReadStateService
                 let read_service = self.read_service.clone();
 
                 async move {
-                    let req = req
-                        .try_into()
-                        .expect("ReadRequest conversion should not fail");
+                    let req = ReadRequest::BlockPoolValuesByHeight(height);
 
                     let rsp = read_service.oneshot(req).await?;
                     let rsp = rsp.try_into().expect("Response conversion should not fail");
@@ -1238,6 +1236,38 @@ impl Service<ReadRequest> for ReadStateService {
                         Ok(ReadResponse::TipPoolValues {
                             tip_height,
                             tip_hash,
+                            value_balance,
+                        })
+                    })
+                })
+                .wait_for_panics()
+            }
+
+            ReadRequest::BlockPoolValuesByHeight(height) => {
+                let state = self.clone();
+
+                tokio::task::spawn_blocking(move || {
+                    span.in_scope(move || {
+                        let hash_value_balance = state
+                            .non_finalized_state_receiver
+                            .with_watch_data(|non_finalized_state| {
+                                read::hash_with_value_balance_by_height(
+                                    non_finalized_state.best_chain(),
+                                    &state.db,
+                                    height,
+                                )
+                            });
+
+                        // The work is done in the future.
+                        // TODO: Do this in the Drop impl with the variant name?
+                        timer.finish(module_path!(), line!(), "ReadRequest::TipPoolValues");
+
+                        let (height, hash, value_balance) = hash_value_balance?
+                            .ok_or(BoxError::from("block with height {} not available", ))?;
+
+                        Ok(ReadResponse::BlockPoolValues {
+                            height,
+                            hash,
                             value_balance,
                         })
                     })

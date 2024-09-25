@@ -154,7 +154,7 @@ impl ZebraDb {
 
     // Value pool methods
 
-     /// Returns the stored `ValueBalance` for the best chain at the provided height.
+    /// Returns the stored `ValueBalance` for the best chain at the provided height.
     pub fn finalized_value_pool(&self, height: Height) -> ValueBalance<NonNegative> {
         let chain_value_pools_cf = self.chain_value_pools_cf();
 

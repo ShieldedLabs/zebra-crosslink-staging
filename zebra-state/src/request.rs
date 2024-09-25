@@ -8,7 +8,7 @@ use std::{
 
 use zebra_chain::{
     amount::{Amount, NegativeAllowed, NonNegative},
-    block::{self, Block},
+    block::{self, Block, Height},
     history_tree::HistoryTree,
     orchard,
     parallel::tree::NoteCommitmentTrees,
@@ -626,7 +626,7 @@ pub enum Request {
     Tip,
 
     #[cfg(zcash_unstable = "zsf")]
-    TipPoolValues,
+    BlockPoolValuesByHeight(Height),
 
     /// Computes a block locator object based on the current best chain.
     ///
@@ -782,7 +782,7 @@ impl Request {
             Request::Depth(_) => "depth",
             Request::Tip => "tip",
             #[cfg(zcash_unstable = "zsf")]
-            Request::TipPoolValues => "tip_pool_values",
+            Request::BlockPoolValuesByHeight(_) => "block_pool_values_by_height",
             Request::BlockLocator => "block_locator",
             Request::Transaction(_) => "transaction",
             Request::UnspentBestChainUtxo { .. } => "unspent_best_chain_utxo",
@@ -823,6 +823,8 @@ pub enum ReadRequest {
     /// Returns [`ReadResponse::TipPoolValues(Option<(Height, block::Hash, ValueBalance)>)`](ReadResponse::TipPoolValues)
     /// with the current best chain tip.
     TipPoolValues,
+
+    BlockPoolValuesByHeight(Height),
 
     /// Computes the depth in the current best chain of the block identified by the given hash.
     ///
@@ -1080,6 +1082,7 @@ impl ReadRequest {
         match self {
             ReadRequest::Tip => "tip",
             ReadRequest::TipPoolValues => "tip_pool_values",
+            ReadRequest::BlockPoolValuesByHeight(_) => "block_pool_values_by_height",
             ReadRequest::Depth(_) => "depth",
             ReadRequest::Block(_) => "block",
             ReadRequest::BlockHeader(_) => "block_header",
@@ -1134,7 +1137,7 @@ impl TryFrom<Request> for ReadRequest {
         match request {
             Request::Tip => Ok(ReadRequest::Tip),
             #[cfg(zcash_unstable = "zsf")]
-            Request::TipPoolValues => Ok(ReadRequest::TipPoolValues),
+            Request::BlockPoolValuesByHeight(height) => Ok(ReadRequest::BlockPoolValuesByHeight(height)),
             Request::Depth(hash) => Ok(ReadRequest::Depth(hash)),
             Request::BestChainNextMedianTimePast => Ok(ReadRequest::BestChainNextMedianTimePast),
             Request::BestChainBlockHash(hash) => Ok(ReadRequest::BestChainBlockHash(hash)),

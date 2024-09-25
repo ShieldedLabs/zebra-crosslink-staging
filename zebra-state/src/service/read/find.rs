@@ -12,9 +12,7 @@
 //! - the shared finalized [`ZebraDb`] reference.
 
 use std::{
-    iter,
-    ops::{RangeBounds, RangeInclusive},
-    sync::Arc,
+    iter, ops::{RangeBounds, RangeInclusive}, sync::Arc
 };
 
 use chrono::{DateTime, Utc};
@@ -26,15 +24,13 @@ use zebra_chain::{
 };
 
 use crate::{
-    constants,
-    service::{
+    constants, service::{
         block_iter::any_ancestor_blocks,
         check::{difficulty::POW_MEDIAN_BLOCK_SPAN, AdjustedDifficulty},
         finalized_state::ZebraDb,
         non_finalized_state::{Chain, NonFinalizedState},
         read::{self, block::block_header, FINALIZED_STATE_QUERY_RETRIES},
-    },
-    BoxError, KnownBlock,
+    }, BoxError, KnownBlock
 };
 
 #[cfg(test)]
@@ -116,6 +112,22 @@ where
                 .into())
         }
     }
+}
+
+/// Returns [`ValueBalance`] for the given height.
+pub fn hash_with_value_balance_by_height<C>(
+    chain: Option<C>,
+    db: &ZebraDb,
+    height: Height,
+) -> Result<Option<(Height, block::Hash, ValueBalance<NonNegative>)>, BoxError>
+where
+    C: AsRef<Chain>,
+{
+    hash_by_height(chain, db, height)
+        .map_or(Err("Block with a given height doesn't exist".into()), |hash| {
+            let value_balance = db.finalized_value_pool(height);
+            Ok(Some((height, hash, value_balance)))
+        })
 }
 
 /// Return the depth of block `hash` from the chain tip.

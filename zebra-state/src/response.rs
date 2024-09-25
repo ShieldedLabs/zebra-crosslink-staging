@@ -48,6 +48,12 @@ pub enum Response {
         value_balance: ValueBalance<NonNegative>,
     },
 
+    BlockPoolValues {
+        height: block::Height,
+        hash: block::Hash,
+        value_balance: ValueBalance<NonNegative>,
+    },
+
     /// Response to [`Request::BlockLocator`] with a block locator object.
     BlockLocator(Vec<block::Hash>),
 
@@ -149,6 +155,12 @@ pub enum ReadResponse {
         /// The current best chain tip hash.
         tip_hash: block::Hash,
         /// The value pool balance at the current best chain tip.
+        value_balance: ValueBalance<NonNegative>,
+    },
+
+    BlockPoolValues {
+        height: block::Height,
+        hash: block::Hash,
         value_balance: ValueBalance<NonNegative>,
     },
 
@@ -345,6 +357,7 @@ impl TryFrom<ReadResponse> for Response {
             ReadResponse::ChainInfo(_) | ReadResponse::SolutionRate(_) | ReadResponse::TipBlockSize(_) => {
                 Err("there is no corresponding Response for this ReadResponse")
             }
+            ReadResponse::BlockPoolValues { height, hash, value_balance } => Ok(Response::BlockPoolValues { height, hash, value_balance }),
         }
     }
 }
