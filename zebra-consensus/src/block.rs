@@ -22,7 +22,7 @@ use tower::{Service, ServiceExt};
 use tracing::Instrument;
 
 use zebra_chain::{
-    amount::Amount,
+    amount::{Amount, NonNegative, MAX_MONEY},
     block,
     parameters::{subsidy::FundingStreamReceiver, Network},
     transparent,
@@ -218,24 +218,38 @@ where
 
             #[cfg(not(zcash_unstable = "zsf"))]
             let expected_block_subsidy = subsidy::general::block_subsidy_pre_zsf(height, &network)?;
+            
+            #[cfg(zcash_unstable = "zsf")]
+            const CHECKPOINT_DIFF: block::HeightDiff = 400;
+            
+            // If current height is less than 400, set it to 0 and use pool values from the genesis block
+            // which are 0, so block_subsidy will be actually calculated using the whole MAX_MONEY
+            #[cfg(zcash_unstable = "zsf")]
+            let last_checkpoint_height: block::Height = (height - CHECKPOINT_DIFF)
+                .unwrap_or(block::Height(0));
+        
             #[cfg(zcash_unstable = "zsf")]
             let expected_block_subsidy = {
-                let zsf_balance = match state_service
-                    .ready()
-                    .await
-                    .map_err(|source| VerifyBlockError::Depth { source, hash })?
-                    .call(zs::Request::TipPoolValues)
-                    .await
-                    .map_err(|source| VerifyBlockError::Depth { source, hash })?
-                {
-                    zs::Response::TipPoolValues {
-                        tip_hash: _,
-                        tip_height: _,
-                        value_balance,
-                    } => value_balance.zsf_balance(),
-                    _ => unreachable!("wrong response to Request::KnownBlock"),
+                let zsf_balance: Amount<NonNegative> = if last_checkpoint_height == block::Height(0) {
+                    MAX_MONEY.try_into().unwrap()
+                }
+                else {
+                    match state_service
+                        .ready()
+                        .await
+                        .map_err(|source| VerifyBlockError::Depth { source, hash })?
+                        .call(zs::Request::BlockPoolValuesByHeight(last_checkpoint_height))
+                        .await
+                        .map_err(|source| VerifyBlockError::Depth { source, hash })?
+                    {
+                        zs::Response::BlockPoolValues {
+                            hash: _,
+                            height: _,
+                            value_balance,
+                        } => value_balance.zsf_balance(),
+                        _ => unreachable!("wrong response to Request::KnownBlock"),
+                    }
                 };
-
                 subsidy::general::block_subsidy(height, &network, zsf_balance)?
             };
 
