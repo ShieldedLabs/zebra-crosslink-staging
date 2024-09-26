@@ -1102,10 +1102,14 @@ where
             let height = req_block.block.height;
 
             #[cfg(not(zcash_unstable = "zsf"))]
-            let expected_block_subsidy = block_subsidy_pre_zsf(height, &network)?;
+            let expected_block_subsidy = if height > network.slow_start_interval() {
+                Some(block_subsidy_pre_zsf(height, &network)?)
+            } else {
+                None
+            };
 
             #[cfg(zcash_unstable = "zsf")]
-            let expected_block_subsidy = {
+            let expected_block_subsidy = if height > network.slow_start_interval() {
                 const CHECKPOINT_DIFF: block::HeightDiff = 400;
 
                 let last_checkpoint_height: block::Height = (height - CHECKPOINT_DIFF)
@@ -1130,12 +1134,14 @@ where
                         _ => unreachable!("wrong response to Request::KnownBlock"),
                     }
                 };
-                block_subsidy(height, &network, zsf_balance)?
+                Some(block_subsidy(height, &network, zsf_balance)?)
+            } else {
+                None
             };
 
             // We can't get the block subsidy for blocks with heights in the slow start interval, so we
             // omit the calculation of the expected deferred amount.
-            let expected_deferred_amount = if height > network.slow_start_interval() {
+            let expected_deferred_amount = if let Some(expected_block_subsidy) = expected_block_subsidy {
                 // TODO: Add link to lockbox stream ZIP
                 funding_stream_values(
                     height,
