@@ -220,20 +220,17 @@ where
             let expected_block_subsidy = subsidy::general::block_subsidy_pre_zsf(height, &network)?;
             
             #[cfg(zcash_unstable = "zsf")]
-            const CHECKPOINT_DIFF: block::HeightDiff = 400;
-            
-            // If current height is less than 400, set it to 0 and use pool values from the genesis block
-            // which are 0, so block_subsidy will be actually calculated using the whole MAX_MONEY
-            #[cfg(zcash_unstable = "zsf")]
-            let last_checkpoint_height: block::Height = (height - CHECKPOINT_DIFF)
-                .unwrap_or(block::Height(0));
-        
-            #[cfg(zcash_unstable = "zsf")]
             let expected_block_subsidy = {
+                const CHECKPOINT_DIFF: block::HeightDiff = 400;
+                
+                // If current height is less than 400, set it to 0 and use pool values from the genesis block
+                // which are 0, so block_subsidy will be actually calculated using the whole MAX_MONEY
+                let last_checkpoint_height: block::Height = (height - CHECKPOINT_DIFF)
+                    .unwrap_or(block::Height(0));
+
                 let zsf_balance: Amount<NonNegative> = if last_checkpoint_height == block::Height(0) {
                     MAX_MONEY.try_into().unwrap()
-                }
-                else {
+                } else {
                     match state_service
                         .ready()
                         .await
@@ -252,7 +249,6 @@ where
                 };
                 subsidy::general::block_subsidy(height, &network, zsf_balance)?
             };
-
             check::subsidy_is_valid(&block, &network, expected_block_subsidy)?;
 
             // Now do the slower checks

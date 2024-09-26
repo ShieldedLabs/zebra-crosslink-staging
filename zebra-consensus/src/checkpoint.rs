@@ -28,7 +28,7 @@ use tower::{Service, ServiceExt};
 use tracing::instrument;
 
 use zebra_chain::{
-    amount,
+    amount::{self, Amount, NonNegative, MAX_MONEY},
     block::{self, Block},
     parameters::{subsidy::FundingStreamReceiver, Network, GENESIS_PREVIOUS_BLOCK_HASH},
     work::equihash,
@@ -36,14 +36,17 @@ use zebra_chain::{
 use zebra_state::{self as zs, CheckpointVerifiedBlock};
 
 use crate::{
-    block::{subsidy::general::block_subsidy_pre_zsf, VerifyBlockError},
-    checkpoint::types::{
+    block::VerifyBlockError, checkpoint::types::{
         Progress::{self, *},
         TargetHeight::{self, *},
-    },
-    error::{BlockError, SubsidyError},
-    funding_stream_values, BoxError, ParameterCheckpoint as _,
+    }, error::{BlockError, SubsidyError}, funding_stream_values, BoxError, ParameterCheckpoint as _
 };
+
+#[cfg(not(zcash_unstable = "zsf"))]
+use crate::block_subsidy_pre_zsf;
+
+#[cfg(zcash_unstable = "zsf")]
+use crate::block_subsidy;
 
 pub(crate) mod list;
 mod types;
@@ -607,22 +610,8 @@ where
             crate::block::check::equihash_solution_is_valid(&block.header)?;
         }
 
-        // We can't get the block subsidy for blocks with heights in the slow start interval, so we
-        // omit the calculation of the expected deferred amount.
-        let expected_deferred_amount = if height > self.network.slow_start_interval() {
-            // TODO: Add link to lockbox stream ZIP
-            funding_stream_values(
-                height,
-                &self.network,
-                block_subsidy_pre_zsf(height, &self.network)?,
-            )?
-            .remove(&FundingStreamReceiver::Deferred)
-        } else {
-            None
-        };
-
         // don't do precalculation until the block passes basic difficulty checks
-        let block = CheckpointVerifiedBlock::new(block, Some(hash), expected_deferred_amount);
+        let block = CheckpointVerifiedBlock::new(block, Some(hash), None);
 
         crate::block::check::merkle_root_validity(
             &self.network,
@@ -1008,6 +997,8 @@ pub enum VerifyCheckpointError {
     },
     #[error("zebra is shutting down")]
     ShuttingDown,
+    #[error("failed to get the zsf balance")]
+    ZsfBalanceError,
 }
 
 impl From<VerifyBlockError> for VerifyCheckpointError {
@@ -1072,7 +1063,7 @@ where
             return async { Err(VerifyCheckpointError::Finished) }.boxed();
         }
 
-        let req_block = match self.queue_block(block) {
+        let mut req_block = match self.queue_block(block) {
             Ok(req_block) => req_block,
             Err(e) => return async { Err(e) }.boxed(),
         };
@@ -1105,8 +1096,58 @@ where
         // If the state commit fails due to corrupt block data,
         // we don't reject the entire checkpoint.
         // Instead, we reset the verifier to the successfully committed state tip.
-        let state_service = self.state_service.clone();
+        let mut state_service = self.state_service.clone();
+        let network = self.network.clone();
         let commit_checkpoint_verified = tokio::spawn(async move {
+            let height = req_block.block.height;
+
+            #[cfg(not(zcash_unstable = "zsf"))]
+            let expected_block_subsidy = block_subsidy_pre_zsf(height, &network)?;
+
+            #[cfg(zcash_unstable = "zsf")]
+            let expected_block_subsidy = {
+                const CHECKPOINT_DIFF: block::HeightDiff = 400;
+
+                let last_checkpoint_height: block::Height = (height - CHECKPOINT_DIFF)
+                    .unwrap_or(block::Height(0));
+
+                let zsf_balance: Amount<NonNegative> = if last_checkpoint_height == block::Height(0) {
+                    MAX_MONEY.try_into().unwrap()
+                } else {
+                    match state_service
+                        .ready()
+                        .await
+                        .map_err(|_source| VerifyCheckpointError::ZsfBalanceError)?
+                        .call(zs::Request::BlockPoolValuesByHeight(last_checkpoint_height))
+                        .await
+                        .map_err(|_source| VerifyCheckpointError::ZsfBalanceError)?
+                    {
+                        zs::Response::BlockPoolValues {
+                            hash: _,
+                            height: _,
+                            value_balance,
+                        } => value_balance.zsf_balance(),
+                        _ => unreachable!("wrong response to Request::KnownBlock"),
+                    }
+                };
+                block_subsidy(height, &network, zsf_balance)?
+            };
+
+            // We can't get the block subsidy for blocks with heights in the slow start interval, so we
+            // omit the calculation of the expected deferred amount.
+            let expected_deferred_amount = if height > network.slow_start_interval() {
+                // TODO: Add link to lockbox stream ZIP
+                funding_stream_values(
+                    height,
+                    &network,
+                    expected_block_subsidy,
+                )?
+                .remove(&FundingStreamReceiver::Deferred)
+            } else {
+                None
+            };
+            req_block.block.deferred_balance = expected_deferred_amount;
+
             let hash = req_block
                 .rx
                 .await
