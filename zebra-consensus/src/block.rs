@@ -301,7 +301,7 @@ where
                     source: amount_error,
                 })?;
 
-            check::miner_fees_are_valid(
+            check::transaction_miner_fees_are_valid(
                 &coinbase_tx,
                 height,
                 block_miner_fees,

@@ -54,6 +54,7 @@ pub use block::{
     },
     Request, VerifyBlockError, MAX_BLOCK_SIGOPS,
 };
+
 pub use checkpoint::{
     list::ParameterCheckpoint, CheckpointList, VerifyCheckpointError, MAX_CHECKPOINT_BYTE_COUNT,
     MAX_CHECKPOINT_HEIGHT_GAP,
