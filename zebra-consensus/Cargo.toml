@@ -17,7 +17,7 @@ categories = ["asynchronous", "cryptography::cryptocurrencies"]
 [features]
 default = []
 
-zsf = []
+nsm = []
 
 # Production features that activate extra dependencies, or extra features in dependencies
 

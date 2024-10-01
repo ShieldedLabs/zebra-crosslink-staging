@@ -194,7 +194,7 @@ pub struct ConfiguredActivationHeights {
     /// Activation height for `NU6` network upgrade.
     #[serde(rename = "NU6")]
     pub nu6: Option<u32>,
-    #[cfg(zcash_unstable = "zsf")]
+    #[cfg(zcash_unstable = "nsm")]
     #[serde(rename = "ZFuture")]
     pub zfuture: Option<u32>,
 }
@@ -317,7 +317,7 @@ impl ParametersBuilder {
             canopy,
             nu5,
             nu6,
-            #[cfg(zcash_unstable = "zsf")]
+            #[cfg(zcash_unstable = "nsm")]
             zfuture,
         }: ConfiguredActivationHeights,
     ) -> Self {
@@ -338,7 +338,7 @@ impl ParametersBuilder {
             .chain(nu5.into_iter().map(|h| (h, Nu5)))
             .chain(nu6.into_iter().map(|h| (h, Nu6)));
 
-        #[cfg(zcash_unstable = "zsf")]
+        #[cfg(zcash_unstable = "nsm")]
         let activation_heights =
             activation_heights.chain(zfuture.into_iter().map(|h| (h, ZFuture)));
 
@@ -549,7 +549,7 @@ impl Parameters {
                     canopy: Some(1),
                     nu5: nu5_activation_height,
                     nu6: nu6_activation_height,
-                    #[cfg(zcash_unstable = "zsf")]
+                    #[cfg(zcash_unstable = "nsm")]
                     zfuture: nu5_activation_height.map(|height| height + 1),
                     ..Default::default()
                 })

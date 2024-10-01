@@ -122,9 +122,9 @@ pub fn lock_time_has_passed(
 ///
 /// This check counts both `Coinbase` and `PrevOut` transparent inputs.
 pub fn has_inputs_and_outputs(tx: &Transaction) -> Result<(), TransactionError> {
-    #[cfg(zcash_unstable = "zsf")]
-    let has_other_outputs = tx.has_zsf_deposit();
-    #[cfg(not(zcash_unstable = "zsf"))]
+    #[cfg(zcash_unstable = "nsm")]
+    let has_other_outputs = tx.has_burn_amount();
+    #[cfg(not(zcash_unstable = "nsm"))]
     let has_other_outputs = false;
 
     if !tx.has_transparent_or_shielded_inputs() {

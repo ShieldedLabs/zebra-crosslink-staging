@@ -413,7 +413,7 @@ where
                     sapling_shielded_data,
                     orchard_shielded_data,
                 )?,
-                #[cfg(zcash_unstable = "zsf")]
+                #[cfg(zcash_unstable = "nsm")]
                 Transaction::ZFuture {
                     sapling_shielded_data,
                     orchard_shielded_data,
@@ -456,9 +456,9 @@ where
             // Get the `value_balance` to calculate the transaction fee.
             let value_balance = tx.value_balance(&spent_utxos);
 
-            let zsf_deposit = match *tx {
-                #[cfg(zcash_unstable = "zsf")]
-                Transaction::ZFuture{ .. } => tx.zsf_deposit(),
+            let burn_amount = match *tx {
+                #[cfg(zcash_unstable = "nsm")]
+                Transaction::ZFuture{ .. } => tx.burn_amount(),
                 _ => Amount::zero()
             };
 
@@ -468,7 +468,7 @@ where
                 // TODO: deduplicate this code with remaining_transaction_value()?
                 miner_fee = value_balance
                     .map(|vb| vb.remaining_transaction_value())
-                    .map(|tx_rtv| tx_rtv - zsf_deposit)
+                    .map(|tx_rtv| tx_rtv - burn_amount)
                     .or(Err(TransactionError::IncorrectFee))?
                     .ok();
             }
@@ -704,7 +704,7 @@ where
                 network_upgrade,
             )),
 
-            #[cfg(zcash_unstable = "zsf")]
+            #[cfg(zcash_unstable = "nsm")]
             NetworkUpgrade::ZFuture => Ok(()),
         }
     }
@@ -786,7 +786,7 @@ where
             // Note: Here we verify the transaction version number of the above rule, the group
             // id is checked in zebra-chain crate, in the transaction serialize.
             NetworkUpgrade::Nu5 | NetworkUpgrade::Nu6 => Ok(()),
-            #[cfg(zcash_unstable = "zsf")]
+            #[cfg(zcash_unstable = "nsm")]
             NetworkUpgrade::ZFuture => Ok(()),
 
             // Does not support V5 transactions
@@ -804,7 +804,7 @@ where
     }
 
     /// Verify a ZFUTURE transaction.
-    #[cfg(zcash_unstable = "zsf")]
+    #[cfg(zcash_unstable = "nsm")]
     fn verify_zfuture_transaction(
         request: &Request,
         network: &Network,

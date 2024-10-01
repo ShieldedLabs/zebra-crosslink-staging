@@ -569,7 +569,7 @@ impl SpendConflictTestInput {
                 // No JoinSplits
                 Transaction::V1 { .. } | Transaction::V5 { .. } => {}
 
-                #[cfg(zcash_unstable = "zsf")]
+                #[cfg(zcash_unstable = "nsm")]
                 Transaction::ZFuture { .. } => {}
             }
         }
@@ -641,7 +641,7 @@ impl SpendConflictTestInput {
                     Self::remove_sapling_transfers_with_conflicts(sapling_shielded_data, &conflicts)
                 }
 
-                #[cfg(zcash_unstable = "zsf")]
+                #[cfg(zcash_unstable = "nsm")]
                 Transaction::ZFuture {
                     sapling_shielded_data,
                     ..
@@ -720,7 +720,7 @@ impl SpendConflictTestInput {
                     ..
                 } => Self::remove_orchard_actions_with_conflicts(orchard_shielded_data, &conflicts),
 
-                #[cfg(zcash_unstable = "zsf")]
+                #[cfg(zcash_unstable = "nsm")]
                 Transaction::ZFuture {
                     orchard_shielded_data,
                     ..

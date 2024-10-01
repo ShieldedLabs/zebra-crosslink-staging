@@ -7,10 +7,10 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use halo2::pasta::group::ff::PrimeField;
 use hex::FromHex;
 use reddsa::{orchard::Binding, orchard::SpendAuth, Signature};
-#[cfg(zcash_unstable = "zsf")]
+#[cfg(zcash_unstable = "nsm")]
 use zcash_primitives::transaction::ZFUTURE_VERSION_GROUP_ID;
 
-#[cfg(zcash_unstable = "zsf")]
+#[cfg(zcash_unstable = "nsm")]
 use crate::parameters::TX_ZFUTURE_VERSION_GROUP_ID;
 
 use crate::{
@@ -679,7 +679,7 @@ impl ZcashSerialize for Transaction {
                 orchard_shielded_data.zcash_serialize(&mut writer)?;
             }
 
-            #[cfg(zcash_unstable = "zsf")]
+            #[cfg(zcash_unstable = "nsm")]
             Transaction::ZFuture {
                 network_upgrade,
                 lock_time,
@@ -688,7 +688,7 @@ impl ZcashSerialize for Transaction {
                 outputs,
                 sapling_shielded_data,
                 orchard_shielded_data,
-                zsf_deposit,
+                burn_amount,
             } => {
                 // Denoted as `nVersionGroupId` in the spec.
                 writer.write_u32::<LittleEndian>(TX_ZFUTURE_VERSION_GROUP_ID)?;
@@ -723,8 +723,8 @@ impl ZcashSerialize for Transaction {
                 // `proofsOrchard`, `vSpendAuthSigsOrchard`, and `bindingSigOrchard`.
                 orchard_shielded_data.zcash_serialize(&mut writer)?;
 
-                // Denoted as `zsf_deposit` in the spec.
-                zsf_deposit.zcash_serialize(&mut writer)?;
+                // Denoted as `burn_amount` in the spec.
+                burn_amount.zcash_serialize(&mut writer)?;
             }
         }
         Ok(())
@@ -982,7 +982,7 @@ impl ZcashDeserialize for Transaction {
                     orchard_shielded_data,
                 })
             }
-            #[cfg(zcash_unstable = "zsf")]
+            #[cfg(zcash_unstable = "nsm")]
             (ZFUTURE_TX_VERSION, true) => {
                 // Denoted as `nVersionGroupId` in the spec.
                 let id = limited_reader.read_u32::<LittleEndian>()?;
@@ -1024,8 +1024,8 @@ impl ZcashDeserialize for Transaction {
                 // `proofsOrchard`, `vSpendAuthSigsOrchard`, and `bindingSigOrchard`.
                 let orchard_shielded_data = (&mut limited_reader).zcash_deserialize_into()?;
 
-                // Denoted as `zsf_deposit` in the spec.
-                let zsf_deposit = (&mut limited_reader).zcash_deserialize_into()?;
+                // Denoted as `burn_amount` in the spec.
+                let burn_amount = (&mut limited_reader).zcash_deserialize_into()?;
 
                 Ok(Transaction::ZFuture {
                     network_upgrade,
@@ -1035,7 +1035,7 @@ impl ZcashDeserialize for Transaction {
                     outputs,
                     sapling_shielded_data,
                     orchard_shielded_data,
-                    zsf_deposit,
+                    burn_amount,
                 })
             }
             (_, _) => Err(SerializationError::Parse("bad tx header")),

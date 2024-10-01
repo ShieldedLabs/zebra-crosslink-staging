@@ -21,7 +21,7 @@ categories = [
 
 [features]
 
-zsf = []
+nsm = []
 
 indexer-rpcs = [
     "tonic-build",

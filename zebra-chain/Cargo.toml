@@ -17,7 +17,7 @@ categories = ["asynchronous", "cryptography::cryptocurrencies", "encoding"]
 [features]
 default = []
 
-zsf = []
+nsm = []
 
 # Production features that activate extra functionality
 
