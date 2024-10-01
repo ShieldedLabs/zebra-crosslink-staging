@@ -233,7 +233,7 @@ pub fn subsidy_is_valid(
 /// Returns `Ok(())` if the miner fees consensus rule is valid.
 ///
 /// [7.1.2]: https://zips.z.cash/protocol/protocol.pdf#txnconsensus
-pub fn transaction_miner_fees_are_valid(
+pub fn miner_fees_are_valid(
     coinbase_tx: &Transaction,
     height: Height,
     block_miner_fees: Amount<NonNegative>,
@@ -241,7 +241,6 @@ pub fn transaction_miner_fees_are_valid(
     expected_deferred_amount: Amount<NonNegative>,
     network: &Network,
 ) -> Result<(), BlockError> {
-    let network_upgrade = NetworkUpgrade::current(network, height);
     let transparent_value_balance = subsidy::general::output_amounts(coinbase_tx)
         .iter()
         .sum::<Result<Amount<NonNegative>, AmountError>>()
@@ -311,14 +310,11 @@ pub fn miner_fees_are_valid(
     // input.
     //
     // > [NU6 onward] The total output of a coinbase transaction MUST be equal to its total input.
-    let block_before_nu6 = network_upgrade < NetworkUpgrade::Nu6;
-    let miner_fees_valid = if block_before_nu6 {
-        left <= right
+    if if NetworkUpgrade::current(network, height) < NetworkUpgrade::Nu6 {
+        left > right
     } else {
-        left == right
-    };
-
-    if !miner_fees_valid {
+        left != right
+    } {
         Err(SubsidyError::InvalidMinerFees)?
     };
 
