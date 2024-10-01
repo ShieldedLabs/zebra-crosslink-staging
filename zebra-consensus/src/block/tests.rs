@@ -530,7 +530,7 @@ fn miner_fees_validation_for_network(network: Network) -> Result<(), Report> {
             .remove(&FundingStreamReceiver::Deferred)
             .unwrap_or_default();
 
-            assert!(check::transaction_miner_fees_are_valid(
+            assert!(check::miner_fees_are_valid(
                 &coinbase_tx,
                 height,
                 // Set the miner fees to a high-enough amount.
@@ -565,7 +565,7 @@ fn miner_fees_validation_failure() -> Result<(), Report> {
     .unwrap_or_default();
 
     assert_eq!(
-        check::transaction_miner_fees_are_valid(
+        check::miner_fees_are_valid(
             check::coinbase_is_first(&block)?.as_ref(),
             height,
             // Set the miner fee to an invalid amount.

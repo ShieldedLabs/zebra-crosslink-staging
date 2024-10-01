@@ -492,7 +492,6 @@ where
                     Response::Mempool { transaction }
                 },
             };
-            tracing::trace!(?tx_id, "Verification finished");
 
             Ok(rsp)
         }

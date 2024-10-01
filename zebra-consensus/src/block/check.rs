@@ -233,7 +233,7 @@ pub fn subsidy_is_valid(
 /// Returns `Ok(())` if the miner fees consensus rule is valid.
 ///
 /// [7.1.2]: https://zips.z.cash/protocol/protocol.pdf#txnconsensus
-pub fn transaction_miner_fees_are_valid(
+pub fn miner_fees_are_valid(
     coinbase_tx: &Transaction,
     height: Height,
     block_miner_fees: Amount<NonNegative>,
@@ -241,7 +241,6 @@ pub fn transaction_miner_fees_are_valid(
     expected_deferred_amount: Amount<NonNegative>,
     network: &Network,
 ) -> Result<(), BlockError> {
-    let network_upgrade = NetworkUpgrade::current(network, height);
     let transparent_value_balance = subsidy::general::output_amounts(coinbase_tx)
         .iter()
         .sum::<Result<Amount<NonNegative>, AmountError>>()
@@ -251,36 +250,6 @@ pub fn transaction_miner_fees_are_valid(
     let sapling_value_balance = coinbase_tx.sapling_value_balance().sapling_amount();
     let orchard_value_balance = coinbase_tx.orchard_value_balance().orchard_amount();
 
-    // Coinbase transaction can still have a ZSF deposit
-    #[cfg(zcash_unstable = "zsf")]
-    let zsf_deposit = coinbase_tx
-        .zsf_deposit()
-        .constrain()
-        .expect("positive value always fit in `NegativeAllowed`");
-
-    miner_fees_are_valid(
-        transparent_value_balance,
-        sapling_value_balance,
-        orchard_value_balance,
-        #[cfg(zcash_unstable = "zsf")]
-        zsf_deposit,
-        expected_block_subsidy,
-        block_miner_fees,
-        expected_deferred_amount,
-        network_upgrade,
-    )
-}
-
-pub fn miner_fees_are_valid(
-    transparent_value_balance: Amount,
-    sapling_value_balance: Amount,
-    orchard_value_balance: Amount,
-    #[cfg(zcash_unstable = "zsf")] zsf_deposit: Amount,
-    expected_block_subsidy: Amount<NonNegative>,
-    block_miner_fees: Amount<NonNegative>,
-    expected_deferred_amount: Amount<NonNegative>,
-    network_upgrade: NetworkUpgrade,
-) -> Result<(), BlockError> {
     // TODO: Update the quote below once its been updated for NU6.
     //
     // # Consensus
@@ -293,11 +262,6 @@ pub fn miner_fees_are_valid(
     //
     // The expected lockbox funding stream output of the coinbase transaction is also subtracted
     // from the block subsidy value plus the transaction fees paid by transactions in this block.
-    #[cfg(zcash_unstable = "zsf")]
-    let left = (transparent_value_balance - sapling_value_balance - orchard_value_balance
-        + zsf_deposit)
-        .map_err(|_| SubsidyError::SumOverflow)?;
-    #[cfg(not(zcash_unstable = "zsf"))]
     let left = (transparent_value_balance - sapling_value_balance - orchard_value_balance)
         .map_err(|_| SubsidyError::SumOverflow)?;
     let right = (expected_block_subsidy + block_miner_fees - expected_deferred_amount)
@@ -311,14 +275,11 @@ pub fn miner_fees_are_valid(
     // input.
     //
     // > [NU6 onward] The total output of a coinbase transaction MUST be equal to its total input.
-    let block_before_nu6 = network_upgrade < NetworkUpgrade::Nu6;
-    let miner_fees_valid = if block_before_nu6 {
-        left <= right
+    if if NetworkUpgrade::current(network, height) < NetworkUpgrade::Nu6 {
+        left > right
     } else {
-        left == right
-    };
-
-    if !miner_fees_valid {
+        left != right
+    } {
         Err(SubsidyError::InvalidMinerFees)?
     };
 
