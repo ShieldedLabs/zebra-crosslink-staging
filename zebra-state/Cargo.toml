@@ -84,6 +84,7 @@ elasticsearch = { version = "8.5.0-alpha.1", default-features = false, features 
 serde_json = { version = "1.0.122", package = "serde_json", optional = true }
 
 zebra-chain = { path = "../zebra-chain", version = "1.0.0-beta.39", features = ["async-error"] }
+zebra-script = { path = "../zebra-script", version = "1.0.0-beta.39" }
 
 # prod feature progress-bar
 howudoin = { version = "0.1.2", optional = true }

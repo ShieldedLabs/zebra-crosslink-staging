@@ -110,6 +110,8 @@ pub(super) const MAINNET_ACTIVATION_HEIGHTS: &[(block::Height, NetworkUpgrade)] 
     (block::Height(1_687_104), Nu5),
     // TODO: Update NU6 activation height once it's been specified.
     (block::Height(2_820_000), Nu6),
+    #[cfg(zcash_unstable = "nsm")]
+    (block::Height(3_000_000), ZFuture),
 ];
 
 /// Fake mainnet network upgrade activation heights, used in tests.
@@ -148,6 +150,8 @@ pub(super) const TESTNET_ACTIVATION_HEIGHTS: &[(block::Height, NetworkUpgrade)] 
     (block::Height(1_028_500), Canopy),
     (block::Height(1_842_420), Nu5),
     (block::Height(2_976_000), Nu6),
+    #[cfg(zcash_unstable = "nsm")]
+    (block::Height(3_000_000), ZFuture),
 ];
 
 /// Fake testnet network upgrade activation heights, used in tests.
@@ -522,7 +526,7 @@ impl NetworkUpgrade {
         if let Some(min_difficulty_gap) =
             NetworkUpgrade::minimum_difficulty_spacing_for_height(network, block_height)
         {
-            block_time_gap > min_difficulty_gap
+            block_time_gap >= min_difficulty_gap
         } else {
             false
         }

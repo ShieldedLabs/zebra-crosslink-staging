@@ -1115,6 +1115,21 @@ impl Service<Request> for StateService {
                 .boxed()
             }
 
+            #[cfg(zcash_unstable = "nsm")]
+            Request::TipPoolValues => {
+                // Redirect the request to the concurrent ReadStateService
+                let read_service = self.read_service.clone();
+                async move {
+                    let req = req
+                        .try_into()
+                        .expect("ReadRequest conversion should not fail");
+                    let rsp = read_service.oneshot(req).await?;
+                    let rsp = rsp.try_into().expect("Response conversion should not fail");
+                    Ok(rsp)
+                }
+                .boxed()
+            }
+
             #[cfg(feature = "getblocktemplate-rpcs")]
             Request::CheckBlockProposalValidity(_) => {
                 // Redirect the request to the concurrent ReadStateService
@@ -1862,7 +1877,7 @@ impl Service<ReadRequest> for ReadStateService {
             }
 
             #[cfg(feature = "getblocktemplate-rpcs")]
-            ReadRequest::CheckBlockProposalValidity(semantically_verified) => {
+            ReadRequest::CheckBlockProposalValidity(mut semantically_verified) => {
                 let state = self.clone();
 
                 // # Performance
@@ -1893,7 +1908,7 @@ impl Service<ReadRequest> for ReadStateService {
                         write::validate_and_commit_non_finalized(
                             &state.db,
                             &mut latest_non_finalized_state,
-                            semantically_verified,
+                            &mut semantically_verified,
                         )?;
 
                         // The work is done in the future.

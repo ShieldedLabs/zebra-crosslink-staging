@@ -6238,6 +6238,7 @@ dependencies = [
  "tower",
  "tracing",
  "zebra-chain",
+ "zebra-script",
  "zebra-test",
 ]
 
