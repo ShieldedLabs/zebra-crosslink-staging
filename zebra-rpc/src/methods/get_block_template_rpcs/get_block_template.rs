@@ -10,6 +10,7 @@ use zebra_chain::{
     block::{
         self,
         merkle::{self, AuthDataRoot},
+        subsidy::{general, funding_streams},
         Block, ChainHistoryBlockTxAuthCommitmentHash, ChainHistoryMmrRootHash, Height,
     },
     chain_sync_status::ChainSyncStatus,
@@ -19,12 +20,7 @@ use zebra_chain::{
     transaction::{Transaction, UnminedTx, VerifiedUnminedTx},
     transparent,
 };
-use zebra_state::{
-    GetBlockTemplateChainInfo,
-    block_subsidy_pre_nsm, funding_stream_address, funding_stream_values, miner_subsidy,
-};
-#[cfg(zcash_unstable = "nsm")]
-use zebra_state::block_subsidy;
+use zebra_state::GetBlockTemplateChainInfo;
 
 use zebra_node_services::mempool;
 
@@ -381,11 +377,11 @@ pub fn standard_coinbase_outputs(
 ) -> Vec<(Amount<NonNegative>, transparent::Script)> {
     #[cfg(zcash_unstable = "nsm")]
     let expected_block_subsidy =
-        block_subsidy(height, network, MAX_MONEY.try_into().expect("MAX_MONEY is a valid amount")).expect("valid block subsidy");
+        general::block_subsidy(height, network, MAX_MONEY.try_into().expect("MAX_MONEY is a valid amount")).expect("valid block subsidy");
     #[cfg(not(zcash_unstable = "nsm"))]
     let expected_block_subsidy =
-        block_subsidy_pre_nsm(height, network).expect("valid block subsidy");
-    let funding_streams = funding_stream_values(height, network, expected_block_subsidy)
+        general::block_subsidy_pre_nsm(height, network).expect("valid block subsidy");
+    let funding_streams = funding_streams::funding_stream_values(height, network, expected_block_subsidy)
         .expect("funding stream value calculations are valid for reasonable chain heights");
 
     // Optional TODO: move this into a zebra_consensus function?
@@ -397,12 +393,12 @@ pub fn standard_coinbase_outputs(
         .filter_map(|(receiver, amount)| {
             Some((
                 receiver,
-                (amount, funding_stream_address(height, network, receiver)?),
+                (amount, funding_streams::funding_stream_address(height, network, receiver)?),
             ))
         })
         .collect();
 
-    let miner_reward = miner_subsidy(height, network, expected_block_subsidy)
+    let miner_reward = general::miner_subsidy(height, network, expected_block_subsidy)
         .expect("reward calculations are valid for reasonable chain heights")
         + miner_fee;
     let miner_reward =

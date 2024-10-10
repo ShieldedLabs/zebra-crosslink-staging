@@ -28,7 +28,6 @@ mod error;
 mod request;
 mod response;
 mod service;
-mod subsidy;
 
 #[cfg(test)]
 mod tests;
@@ -39,8 +38,7 @@ pub use config::{
 };
 pub use constants::{state_database_format_version_in_code, MAX_BLOCK_REORG_HEIGHT};
 pub use error::{
-    BoxError, CloneError, CommitSemanticallyVerifiedError, DuplicateNullifierError,
-    ValidateContextError, BlockError, SubsidyError, TransactionError,
+    BoxError, CloneError, CommitSemanticallyVerifiedError, DuplicateNullifierError, ValidateContextError,
 };
 pub use request::{
     CheckpointVerifiedBlock, HashOrHeight, ReadRequest, Request, SemanticallyVerifiedBlock,
@@ -97,14 +95,6 @@ pub(crate) use config::hidden::{
 };
 
 pub use request::ContextuallyVerifiedBlock;
-
-pub use subsidy::{
-    funding_streams::{funding_stream_address, funding_stream_values, new_coinbase_script},
-    general::{block_subsidy_pre_nsm, miner_subsidy},
-};
-
-#[cfg(zcash_unstable = "nsm")]
-pub use subsidy::general::block_subsidy;
 
 /// The maximum allowed number of legacy signature check operations in a block.
 ///
