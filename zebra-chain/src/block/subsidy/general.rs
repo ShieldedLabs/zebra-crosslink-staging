@@ -6,14 +6,13 @@
 
 use std::collections::HashSet;
 
-use zebra_chain::{
+use crate::{
     amount::{Amount, Error, NonNegative},
-    block::{Height, HeightDiff},
+    block::{Height, HeightDiff, subsidy::funding_streams::funding_stream_values},
+    error::SubsidyError,
     parameters::{subsidy::*, Network, NetworkUpgrade::*},
     transaction::Transaction,
 };
-
-use crate::{error::SubsidyError, subsidy::funding_streams::funding_stream_values};
 
 /// The divisor used for halvings.
 ///
@@ -184,7 +183,7 @@ fn lockbox_input_value(network: &Network, height: Height) -> Amount<NonNegative>
 mod test {
     use super::*;
     use color_eyre::Report;
-    use zebra_chain::parameters::testnet::{
+    use crate::parameters::testnet::{
         self, ConfiguredActivationHeights, ConfiguredFundingStreamRecipient,
         ConfiguredFundingStreams,
     };

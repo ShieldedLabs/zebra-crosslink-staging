@@ -8,7 +8,11 @@ use tokio::sync::{
 
 use zebra_chain::{
     amount::MAX_MONEY,
-    block::{self, Height},
+    block::{self, Height, subsidy::{
+            funding_streams::funding_stream_values,
+            general,
+        },
+    },
     parameters::subsidy::FundingStreamReceiver,
     transparent::EXTRA_ZEBRA_COINBASE_DATA,
 };
@@ -21,10 +25,6 @@ use crate::{
         non_finalized_state::NonFinalizedState,
         queued_blocks::{QueuedCheckpointVerified, QueuedSemanticallyVerified},
         BoxError, ChainTipBlock, ChainTipSender, CloneError,
-    },
-    subsidy::{
-        funding_streams::funding_stream_values,
-        general,
     },
     CommitSemanticallyVerifiedError, SemanticallyVerifiedBlock,
 };

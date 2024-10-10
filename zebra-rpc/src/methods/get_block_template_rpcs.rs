@@ -11,7 +11,10 @@ use zcash_address::{unified::Encoding, TryFromAddress};
 
 use zebra_chain::{
     amount::{self, Amount, NonNegative},
-    block::{self, Block, Height, TryIntoHeight},
+    block::{
+        self, Block, Height, TryIntoHeight, 
+        subsidy::{general, funding_streams},
+    },
     chain_sync_status::ChainSyncStatus,
     chain_tip::ChainTip,
     parameters::{
@@ -30,11 +33,7 @@ use zebra_consensus::RouterError;
 
 use zebra_state::{
     ReadRequest, ReadResponse,
-    block_subsidy_pre_nsm, funding_stream_address, funding_stream_values, miner_subsidy,
 };
-
-#[cfg(zcash_unstable = "nsm")]
-use zebra_state::block_subsidy;
 
 use zebra_network::AddressBookPeers;
 use zebra_node_services::mempool;
@@ -1259,16 +1258,16 @@ where
 
             #[cfg(zcash_unstable = "nsm")]
             let total_block_subsidy =
-                block_subsidy(height, &network, money_reserve).map_server_error()?;
+                general::block_subsidy(height, &network, money_reserve).map_server_error()?;
             #[cfg(not(zcash_unstable = "nsm"))]
             let total_block_subsidy =
-                block_subsidy_pre_nsm(height, &network).map_server_error()?;
+                general::block_subsidy_pre_nsm(height, &network).map_server_error()?;
 
             let miner_subsidy =
-                miner_subsidy(height, &network, total_block_subsidy).map_server_error()?;
+                general::miner_subsidy(height, &network, total_block_subsidy).map_server_error()?;
 
             let (lockbox_streams, mut funding_streams): (Vec<_>, Vec<_>) =
-                funding_stream_values(height, &network, total_block_subsidy)
+                funding_streams::funding_stream_values(height, &network, total_block_subsidy)
                     .map_server_error()?
                     .into_iter()
                     // Separate the funding streams into deferred and non-deferred streams
@@ -1295,7 +1294,7 @@ where
                     streams
                         .into_iter()
                         .map(|(receiver, value)| {
-                            let address = funding_stream_address(height, &network, receiver);
+                            let address = funding_streams::funding_stream_address(height, &network, receiver);
                             FundingStream::new(is_nu6, receiver, value, address)
                         })
                         .collect()
