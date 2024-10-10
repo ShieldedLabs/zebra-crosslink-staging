@@ -6,7 +6,7 @@ use jsonrpc_core::{Error, ErrorCode, Result};
 use tower::{Service, ServiceExt};
 
 use zebra_chain::{
-    amount::{self, Amount, NegativeOrZero, NonNegative},
+    amount::{self, Amount, MAX_MONEY, NegativeOrZero, NonNegative},
     block::{
         self,
         merkle::{self, AuthDataRoot},
@@ -19,11 +19,14 @@ use zebra_chain::{
     transaction::{Transaction, UnminedTx, VerifiedUnminedTx},
     transparent,
 };
-use zebra_consensus::{
-    block_subsidy, funding_stream_address, funding_stream_values, miner_subsidy,
+use zebra_state::{
+    GetBlockTemplateChainInfo,
+    block_subsidy_pre_nsm, funding_stream_address, funding_stream_values, miner_subsidy,
 };
+#[cfg(zcash_unstable = "nsm")]
+use zebra_state::block_subsidy;
+
 use zebra_node_services::mempool;
-use zebra_state::GetBlockTemplateChainInfo;
 
 use crate::methods::{
     errors::OkOrServerError,
@@ -376,7 +379,12 @@ pub fn standard_coinbase_outputs(
     miner_fee: Amount<NonNegative>,
     like_zcashd: bool,
 ) -> Vec<(Amount<NonNegative>, transparent::Script)> {
-    let expected_block_subsidy = block_subsidy(height, network).expect("valid block subsidy");
+    #[cfg(zcash_unstable = "nsm")]
+    let expected_block_subsidy =
+        block_subsidy(height, network, MAX_MONEY.try_into().expect("MAX_MONEY is a valid amount")).expect("valid block subsidy");
+    #[cfg(not(zcash_unstable = "nsm"))]
+    let expected_block_subsidy =
+        block_subsidy_pre_nsm(height, network).expect("valid block subsidy");
     let funding_streams = funding_stream_values(height, network, expected_block_subsidy)
         .expect("funding stream value calculations are valid for reasonable chain heights");
 

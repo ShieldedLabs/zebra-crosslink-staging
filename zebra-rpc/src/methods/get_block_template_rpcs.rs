@@ -25,12 +25,19 @@ use zebra_chain::{
     },
     work::difficulty::{ParameterDifficulty as _, U256},
 };
-use zebra_consensus::{
-    block_subsidy, funding_stream_address, funding_stream_values, miner_subsidy, RouterError,
+
+use zebra_consensus::RouterError;
+
+use zebra_state::{
+    ReadRequest, ReadResponse,
+    block_subsidy_pre_nsm, funding_stream_address, funding_stream_values, miner_subsidy,
 };
+
+#[cfg(zcash_unstable = "nsm")]
+use zebra_state::block_subsidy;
+
 use zebra_network::AddressBookPeers;
 use zebra_node_services::mempool;
-use zebra_state::{ReadRequest, ReadResponse};
 
 use crate::methods::{
     best_chain_tip_height,
@@ -1202,6 +1209,7 @@ where
     fn get_block_subsidy(&self, height: Option<u32>) -> BoxFuture<Result<BlockSubsidy>> {
         let latest_chain_tip = self.latest_chain_tip.clone();
         let network = self.network.clone();
+        let mut state_service = self.state.clone();
 
         async move {
             let height = if let Some(height) = height {
@@ -1223,7 +1231,39 @@ where
             // Always zero for post-halving blocks
             let founders = Amount::zero();
 
-            let total_block_subsidy = block_subsidy(height, &network).map_server_error()?;
+            let service = state_service.ready().await.map_err(|_| Error {
+                code: ErrorCode::InternalError,
+                message: "".into(),
+                data: None,
+            })?;
+
+            let tip_pool_values =
+                service
+                    .call(ReadRequest::TipPoolValues)
+                    .await
+                    .map_err(|_| Error {
+                        code: ErrorCode::InternalError,
+                        message: "".into(),
+                        data: None,
+                    });
+
+            #[cfg(zcash_unstable = "nsm")]
+            let money_reserve = match tip_pool_values? {
+                ReadResponse::TipPoolValues {
+                    tip_hash: _,
+                    tip_height: _,
+                    value_balance,
+                } => value_balance.money_reserve(),
+                _ => unreachable!("wrong response to Request::TipPoolValues"),
+            };
+
+            #[cfg(zcash_unstable = "nsm")]
+            let total_block_subsidy =
+                block_subsidy(height, &network, money_reserve).map_server_error()?;
+            #[cfg(not(zcash_unstable = "nsm"))]
+            let total_block_subsidy =
+                block_subsidy_pre_nsm(height, &network).map_server_error()?;
+
             let miner_subsidy =
                 miner_subsidy(height, &network, total_block_subsidy).map_server_error()?;
 

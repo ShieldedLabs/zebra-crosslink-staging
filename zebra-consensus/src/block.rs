@@ -216,9 +216,9 @@ where
                 .map_err(VerifyBlockError::Time)?;
             let coinbase_tx = check::coinbase_is_first(&block)?;
 
-            let expected_block_subsidy = subsidy::general::block_subsidy(height, &network)?;
+            // let expected_block_subsidy = subsidy::general::block_subsidy(height, &network)?;
 
-            check::subsidy_is_valid(&block, &network, expected_block_subsidy)?;
+            // check::subsidy_is_valid(&block, &network, expected_block_subsidy)?;
 
             // Now do the slower checks
 
@@ -285,14 +285,14 @@ where
             }
 
             // TODO: Add link to lockbox stream ZIP
-            let expected_deferred_amount = subsidy::funding_streams::funding_stream_values(
-                height,
-                &network,
-                expected_block_subsidy,
-            )
-            .expect("we always expect a funding stream hashmap response even if empty")
-            .remove(&FundingStreamReceiver::Deferred)
-            .unwrap_or_default();
+            // let expected_deferred_amount = subsidy::funding_streams::funding_stream_values(
+            //     height,
+            //     &network,
+            //     expected_block_subsidy,
+            // )
+            // .expect("we always expect a funding stream hashmap response even if empty")
+            // .remove(&FundingStreamReceiver::Deferred)
+            // .unwrap_or_default();
 
             let block_miner_fees =
                 block_miner_fees.map_err(|amount_error| BlockError::SummingMinerFees {
@@ -301,14 +301,14 @@ where
                     source: amount_error,
                 })?;
 
-            check::miner_fees_are_valid(
-                &coinbase_tx,
-                height,
-                block_miner_fees,
-                expected_block_subsidy,
-                expected_deferred_amount,
-                &network,
-            )?;
+            // check::miner_fees_are_valid(
+            //     &coinbase_tx,
+            //     height,
+            //     block_miner_fees,
+            //     expected_block_subsidy,
+            //     expected_deferred_amount,
+            //     &network,
+            // )?;
 
             // Finally, submit the block for contextual verification.
             let new_outputs = Arc::into_inner(known_utxos)
@@ -320,7 +320,8 @@ where
                 height,
                 new_outputs,
                 transaction_hashes,
-                deferred_balance: Some(expected_deferred_amount),
+                deferred_balance: None,
+                block_miner_fees: Some(block_miner_fees),
             };
 
             // Return early for proposal requests when getblocktemplate-rpcs feature is enabled

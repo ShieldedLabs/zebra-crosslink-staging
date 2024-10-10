@@ -608,18 +608,18 @@ where
             crate::block::check::equihash_solution_is_valid(&block.header)?;
         }
 
-        // We can't get the block subsidy for blocks with heights in the slow start interval, so we
-        // omit the calculation of the expected deferred amount.
-        let expected_deferred_amount = if height > self.network.slow_start_interval() {
-            // TODO: Add link to lockbox stream ZIP
-            funding_stream_values(height, &self.network, block_subsidy(height, &self.network)?)?
-                .remove(&FundingStreamReceiver::Deferred)
-        } else {
-            None
-        };
+        // // We can't get the block subsidy for blocks with heights in the slow start interval, so we
+        // // omit the calculation of the expected deferred amount.
+        // let expected_deferred_amount = if height > self.network.slow_start_interval() {
+        //     // TODO: Add link to lockbox stream ZIP
+        //     funding_stream_values(height, &self.network, block_subsidy(height, &self.network)?)?
+        //         .remove(&FundingStreamReceiver::Deferred)
+        // } else {
+        //     None
+        // };
 
         // don't do precalculation until the block passes basic difficulty checks
-        let block = CheckpointVerifiedBlock::new(block, Some(hash), expected_deferred_amount);
+        let block = CheckpointVerifiedBlock::new(block, Some(hash), None);
 
         crate::block::check::merkle_root_validity(
             &self.network,

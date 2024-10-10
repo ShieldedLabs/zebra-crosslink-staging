@@ -527,7 +527,7 @@ impl NetworkUpgrade {
         if let Some(min_difficulty_gap) =
             NetworkUpgrade::minimum_difficulty_spacing_for_height(network, block_height)
         {
-            block_time_gap > min_difficulty_gap
+            block_time_gap >= min_difficulty_gap
         } else {
             false
         }
