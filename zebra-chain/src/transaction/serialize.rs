@@ -7,8 +7,6 @@ use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use halo2::pasta::group::ff::PrimeField;
 use hex::FromHex;
 use reddsa::{orchard::Binding, orchard::SpendAuth, Signature};
-#[cfg(zcash_unstable = "nsm")]
-use zcash_primitives::transaction::ZFUTURE_VERSION_GROUP_ID;
 
 #[cfg(zcash_unstable = "nsm")]
 use crate::parameters::TX_ZFUTURE_VERSION_GROUP_ID;
