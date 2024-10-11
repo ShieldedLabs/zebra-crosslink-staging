@@ -66,13 +66,8 @@ expression: info
       "status": "pending"
     },
     "c8e71055": {
-      "name": "NU6",
+      "name": "Nu6",
       "activationheight": 2976000,
-      "status": "pending"
-    },
-    "ffffffff": {
-      "name": "ZFuture",
-      "activationheight": 3000000,
       "status": "pending"
     }
   },
