@@ -135,3 +135,6 @@ zebra-state = { path = "../zebra-state", version = "1.0.0-beta.44", features = [
 ] }
 
 zebra-test = { path = "../zebra-test", version = "1.0.0-beta.44" }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(zcash_unstable, values("nsm"))'] }
