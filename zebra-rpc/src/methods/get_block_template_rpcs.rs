@@ -1230,35 +1230,34 @@ where
             // Always zero for post-halving blocks
             let founders = Amount::zero();
 
-            let service = state_service.ready().await.map_err(|_| Error {
-                code: ErrorCode::InternalError,
-                message: "".into(),
-                data: None,
-            })?;
-
-            let tip_pool_values =
-                service
+            #[cfg(zcash_unstable = "nsm")]
+            let total_block_subsidy = {
+                let money_reserve = match state_service
+                    .ready()
+                    .await
+                    .map_err(|_| Error {
+                        code: ErrorCode::InternalError,
+                        message: "".into(),
+                        data: None,
+                    })? 
                     .call(ReadRequest::TipPoolValues)
                     .await
                     .map_err(|_| Error {
                         code: ErrorCode::InternalError,
                         message: "".into(),
                         data: None,
-                    });
-
-            #[cfg(zcash_unstable = "nsm")]
-            let money_reserve = match tip_pool_values? {
-                ReadResponse::TipPoolValues {
-                    tip_hash: _,
-                    tip_height: _,
-                    value_balance,
-                } => value_balance.money_reserve(),
-                _ => unreachable!("wrong response to Request::TipPoolValues"),
+                    })?
+                    {
+                        ReadResponse::TipPoolValues {
+                            tip_hash: _,
+                            tip_height: _,
+                            value_balance,
+                        } => value_balance.money_reserve(),
+                        _ => unreachable!("wrong response to ReadRequest::TipPoolValues"),
+                    };
+                general::block_subsidy(height, &network, money_reserve).map_server_error()?
             };
 
-            #[cfg(zcash_unstable = "nsm")]
-            let total_block_subsidy =
-                general::block_subsidy(height, &network, money_reserve).map_server_error()?;
             #[cfg(not(zcash_unstable = "nsm"))]
             let total_block_subsidy =
                 general::block_subsidy_pre_nsm(height, &network).map_server_error()?;

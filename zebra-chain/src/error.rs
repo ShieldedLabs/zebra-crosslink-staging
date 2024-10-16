@@ -77,6 +77,9 @@ pub enum SubsidyError {
 
     #[error("invalid amount")]
     InvalidAmount(amount::Error),
+
+    #[error("invalid burn amount")]
+    InvalidBurnAmount,
 }
 
 impl From<amount::Error> for SubsidyError {

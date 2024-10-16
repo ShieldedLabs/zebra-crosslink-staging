@@ -698,5 +698,14 @@ pub fn miner_fees_are_valid(
         Err(SubsidyError::InvalidMinerFees)?
     };
 
+    // Verify that the NSM burn amount is at least the minimum required amount (ZIP-235).
+    #[cfg(zcash_unstable = "nsm")]
+    if network_upgrade == NetworkUpgrade::ZFuture {
+        let minimum_burn_amount = ((block_miner_fees * 6).unwrap() / 10).unwrap();
+        if burn_amount < minimum_burn_amount {
+            Err(SubsidyError::InvalidBurnAmount)?
+        }
+    }
+
     Ok(())
 }

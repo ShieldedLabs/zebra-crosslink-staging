@@ -24,6 +24,7 @@ use zebra_chain::{
 };
 use zebra_state::check::{
     coinbase_is_first,
+    miner_fees_are_valid,
     subsidy_is_valid,
     transaction_miner_fees_are_valid,
 };
@@ -591,93 +592,89 @@ fn miner_fees_validation_failure() -> Result<(), Report> {
     Ok(())
 }
 
-// #[cfg(zcash_unstable = "nsm")]
-// #[test]
-// fn miner_fees_validation_fails_when_burn_amount_is_zero() -> Result<(), Report> {
-//     let transparent_value_balance = 100_001_000.try_into().unwrap();
-//     let sapling_value_balance = Amount::zero();
-//     let orchard_value_balance = Amount::zero();
-//     let burn_amount = Amount::zero();
-//     let expected_block_subsidy = 100_000_000.try_into().unwrap();
-//     let block_miner_fees = 1000.try_into().unwrap();
-//     let expected_deferred_amount = Amount::zero();
+#[cfg(zcash_unstable = "nsm")]
+#[test]
+fn miner_fees_validation_fails_when_burn_amount_is_zero() -> Result<(), Report> {
+    let transparent_value_balance = 100_001_000.try_into().unwrap();
+    let sapling_value_balance = Amount::zero();
+    let orchard_value_balance = Amount::zero();
+    let burn_amount = Amount::zero();
+    let expected_block_subsidy = 100_000_000.try_into().unwrap();
+    let block_miner_fees = 1000.try_into().unwrap();
+    let expected_deferred_amount = Amount::zero();
 
-//     assert_eq!(
-//         check::miner_fees_are_valid(
-//             transparent_value_balance,
-//             sapling_value_balance,
-//             orchard_value_balance,
-//             burn_amount,
-//             expected_block_subsidy,
-//             block_miner_fees,
-//             expected_deferred_amount,
-//             NetworkUpgrade::ZFuture
-//         ),
-//         Err(BlockError::Transaction(TransactionError::Subsidy(
-//             SubsidyError::InvalidBurnAmount,
-//         )))
-//     );
+    assert_eq!(
+        miner_fees_are_valid(
+            transparent_value_balance,
+            sapling_value_balance,
+            orchard_value_balance,
+            burn_amount,
+            expected_block_subsidy,
+            block_miner_fees,
+            expected_deferred_amount,
+            NetworkUpgrade::ZFuture
+        ),
+        Err(SubsidyError::InvalidBurnAmount)
+    );
 
-//     Ok(())
-// }
+    Ok(())
+}
 
-// #[cfg(zcash_unstable = "nsm")]
-// #[test]
-// fn miner_fees_validation_succeeds_when_zsf_deposit_is_correct() -> Result<(), Report> {
-//     let transparent_value_balance = 100_001_000.try_into().unwrap();
-//     let sapling_value_balance = Amount::zero();
-//     let orchard_value_balance = Amount::zero();
-//     let burn_amount = 600.try_into().unwrap();
-//     let expected_block_subsidy = (100_000_600).try_into().unwrap();
-//     let block_miner_fees = 1000.try_into().unwrap();
-//     let expected_deferred_amount = Amount::zero();
+#[cfg(zcash_unstable = "nsm")]
+#[test]
+fn miner_fees_validation_succeeds_when_zsf_deposit_is_correct() -> Result<(), Report> {
+    let transparent_value_balance = 100_001_000.try_into().unwrap();
+    let sapling_value_balance = Amount::zero();
+    let orchard_value_balance = Amount::zero();
+    let burn_amount = 600.try_into().unwrap();
+    let expected_block_subsidy = (100_000_600).try_into().unwrap();
+    let block_miner_fees = 1000.try_into().unwrap();
+    let expected_deferred_amount = Amount::zero();
 
-//     assert_eq!(
-//         check::miner_fees_are_valid(
-//             transparent_value_balance,
-//             sapling_value_balance,
-//             orchard_value_balance,
-//             burn_amount,
-//             expected_block_subsidy,
-//             block_miner_fees,
-//             expected_deferred_amount,
-//             NetworkUpgrade::ZFuture
-//         ),
-//         Ok(())
-//     );
+    assert_eq!(
+        miner_fees_are_valid(
+            transparent_value_balance,
+            sapling_value_balance,
+            orchard_value_balance,
+            burn_amount,
+            expected_block_subsidy,
+            block_miner_fees,
+            expected_deferred_amount,
+            NetworkUpgrade::ZFuture
+        ),
+        Ok(())
+    );
 
-//     Ok(())
-// }
+    Ok(())
+}
 
-// #[cfg(zcash_unstable = "nsm")]
-// #[test]
-// fn miner_fees_validation_fails_when_zsf_deposit_is_incorrect() -> Result<(), Report> {
-//     let transparent_value_balance = 100_001_000.try_into().unwrap();
-//     let sapling_value_balance = Amount::zero();
-//     let orchard_value_balance = Amount::zero();
-//     let burn_amount = 500.try_into().unwrap();
-//     let expected_block_subsidy = (100_000_500).try_into().unwrap();
-//     let block_miner_fees = 1000.try_into().unwrap();
-//     let expected_deferred_amount = Amount::zero();
+#[cfg(zcash_unstable = "nsm")]
+#[test]
+fn miner_fees_validation_fails_when_zsf_deposit_is_incorrect() -> Result<(), Report> {
+    let transparent_value_balance = 100_001_000.try_into().unwrap();
+    let sapling_value_balance = Amount::zero();
+    let orchard_value_balance = Amount::zero();
+    let burn_amount = 500.try_into().unwrap();
+    let expected_block_subsidy = (100_000_500).try_into().unwrap();
+    let block_miner_fees = 1000.try_into().unwrap();
+    let expected_deferred_amount = Amount::zero();
 
-//     assert_eq!(
-//         check::miner_fees_are_valid(
-//             transparent_value_balance,
-//             sapling_value_balance,
-//             orchard_value_balance,
-//             burn_amount,
-//             expected_block_subsidy,
-//             block_miner_fees,
-//             expected_deferred_amount,
-//             NetworkUpgrade::ZFuture
-//         ),
-//         Err(BlockError::Transaction(TransactionError::Subsidy(
-//             SubsidyError::InvalidBurnAmount,
-//         )))
-//     );
+    assert_eq!(
+        miner_fees_are_valid(
+            transparent_value_balance,
+            sapling_value_balance,
+            orchard_value_balance,
+            burn_amount,
+            expected_block_subsidy,
+            block_miner_fees,
+            expected_deferred_amount,
+            NetworkUpgrade::ZFuture
+        ),
+        Err(SubsidyError::InvalidBurnAmount)
+    );
 
-//     Ok(())
-// }
+    Ok(())
+}
 
 #[test]
 fn time_is_valid_for_historical_blocks() -> Result<(), Report> {
