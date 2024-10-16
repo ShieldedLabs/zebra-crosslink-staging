@@ -454,7 +454,12 @@ pub(crate) fn initial_contextual_validity(
     );
 
     let pool_value_balance = non_finalized_state.best_chain()
-        .map(|chain| chain.chain_value_pools);
+        .map(|chain| chain.chain_value_pools)
+        .or_else(|| {
+            finalized_state.finalized_tip_height()
+                .filter(|x| (*x + 1).unwrap() == semantically_verified.height)
+                .map(|_| finalized_state.finalized_value_pool())
+        });
 
     // Security: check proof of work before any other checks
     check::block_is_valid_for_recent_chain(
