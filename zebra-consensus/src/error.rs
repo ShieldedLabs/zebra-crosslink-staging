@@ -9,8 +9,8 @@ use chrono::{DateTime, Utc};
 use thiserror::Error;
 
 use zebra_chain::{
-    amount, block, 
-    error::{SubsidyError, CoinbaseTransactionError},
+    amount, block,
+    error::{CoinbaseTransactionError, SubsidyError},
     orchard, sapling, sprout,
     transparent::{self, MIN_TRANSPARENT_COINBASE_MATURITY},
 };

@@ -8,7 +8,7 @@ use std::collections::HashSet;
 
 use crate::{
     amount::{Amount, Error, NonNegative},
-    block::{Height, HeightDiff, subsidy::funding_streams::funding_stream_values},
+    block::{subsidy::funding_streams::funding_stream_values, Height, HeightDiff},
     error::SubsidyError,
     parameters::{subsidy::*, Network, NetworkUpgrade::*},
     transaction::Transaction,
@@ -182,11 +182,11 @@ fn lockbox_input_value(network: &Network, height: Height) -> Amount<NonNegative>
 #[cfg(test)]
 mod test {
     use super::*;
-    use color_eyre::Report;
     use crate::parameters::testnet::{
         self, ConfiguredActivationHeights, ConfiguredFundingStreamRecipient,
         ConfiguredFundingStreams,
     };
+    use color_eyre::Report;
 
     #[test]
     fn halving_test() -> Result<(), Report> {

@@ -3112,7 +3112,9 @@ async fn trusted_chain_sync_handles_forks_correctly() -> Result<()> {
         semantically_verified.block_miner_fees = Some(0.try_into().unwrap());
         let Response::Committed(block_hash) = state2
             .clone()
-            .oneshot(zebra_state::Request::CommitSemanticallyVerifiedBlock(semantically_verified))
+            .oneshot(zebra_state::Request::CommitSemanticallyVerifiedBlock(
+                semantically_verified,
+            ))
             .await
             .map_err(|err| eyre!(err))?
         else {

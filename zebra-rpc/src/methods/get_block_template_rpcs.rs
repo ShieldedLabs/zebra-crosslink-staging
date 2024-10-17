@@ -12,8 +12,9 @@ use zcash_address::{unified::Encoding, TryFromAddress};
 use zebra_chain::{
     amount::{self, Amount, NonNegative},
     block::{
-        self, Block, Height, TryIntoHeight, 
-        subsidy::{general, funding_streams},
+        self,
+        subsidy::{funding_streams, general},
+        Block, Height, TryIntoHeight,
     },
     chain_sync_status::ChainSyncStatus,
     chain_tip::ChainTip,
@@ -31,9 +32,7 @@ use zebra_chain::{
 
 use zebra_consensus::RouterError;
 
-use zebra_state::{
-    ReadRequest, ReadResponse,
-};
+use zebra_state::{ReadRequest, ReadResponse};
 
 use zebra_network::AddressBookPeers;
 use zebra_node_services::mempool;
@@ -1208,6 +1207,7 @@ where
     fn get_block_subsidy(&self, height: Option<u32>) -> BoxFuture<Result<BlockSubsidy>> {
         let latest_chain_tip = self.latest_chain_tip.clone();
         let network = self.network.clone();
+        #[cfg(zcash_unstable = "nsm")]
         let mut state_service = self.state.clone();
 
         async move {
@@ -1239,22 +1239,21 @@ where
                         code: ErrorCode::InternalError,
                         message: "".into(),
                         data: None,
-                    })? 
+                    })?
                     .call(ReadRequest::TipPoolValues)
                     .await
                     .map_err(|_| Error {
                         code: ErrorCode::InternalError,
                         message: "".into(),
                         data: None,
-                    })?
-                    {
-                        ReadResponse::TipPoolValues {
-                            tip_hash: _,
-                            tip_height: _,
-                            value_balance,
-                        } => value_balance.money_reserve(),
-                        _ => unreachable!("wrong response to ReadRequest::TipPoolValues"),
-                    };
+                    })? {
+                    ReadResponse::TipPoolValues {
+                        tip_hash: _,
+                        tip_height: _,
+                        value_balance,
+                    } => value_balance.money_reserve(),
+                    _ => unreachable!("wrong response to ReadRequest::TipPoolValues"),
+                };
                 general::block_subsidy(height, &network, money_reserve).map_server_error()?
             };
 
@@ -1293,7 +1292,8 @@ where
                     streams
                         .into_iter()
                         .map(|(receiver, value)| {
-                            let address = funding_streams::funding_stream_address(height, &network, receiver);
+                            let address =
+                                funding_streams::funding_stream_address(height, &network, receiver);
                             FundingStream::new(is_nu6, receiver, value, address)
                         })
                         .collect()

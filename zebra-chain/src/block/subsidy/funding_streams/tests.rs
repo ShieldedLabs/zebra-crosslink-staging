@@ -139,7 +139,8 @@ fn test_funding_stream_values() -> Result<(), Report> {
         Height(nu6_height.0 + 1),
     ] {
         assert_eq!(
-            funding_stream_values(height, &network, block_subsidy_pre_nsm(height, &network)?).unwrap(),
+            funding_stream_values(height, &network, block_subsidy_pre_nsm(height, &network)?)
+                .unwrap(),
             hash_map
         );
     }
@@ -193,7 +194,8 @@ fn test_funding_stream_values() -> Result<(), Report> {
         Height(nu6_height.0 + 1),
     ] {
         assert_eq!(
-            funding_stream_values(height, &network, block_subsidy_pre_nsm(height, &network)?).unwrap(),
+            funding_stream_values(height, &network, block_subsidy_pre_nsm(height, &network)?)
+                .unwrap(),
             hash_map
         );
     }

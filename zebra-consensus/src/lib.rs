@@ -47,9 +47,7 @@ pub mod transaction;
 #[cfg(any(test, feature = "proptest-impl"))]
 pub use block::check::difficulty_is_valid;
 
-pub use block::{
-    Request, VerifyBlockError, MAX_BLOCK_SIGOPS,
-};
+pub use block::{Request, VerifyBlockError, MAX_BLOCK_SIGOPS};
 
 pub use checkpoint::{
     list::ParameterCheckpoint, CheckpointList, VerifyCheckpointError, MAX_CHECKPOINT_BYTE_COUNT,

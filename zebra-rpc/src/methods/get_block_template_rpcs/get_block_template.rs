@@ -6,11 +6,11 @@ use jsonrpc_core::{Error, ErrorCode, Result};
 use tower::{Service, ServiceExt};
 
 use zebra_chain::{
-    amount::{self, Amount, MAX_MONEY, NegativeOrZero, NonNegative},
+    amount::{self, Amount, NegativeOrZero, NonNegative, MAX_MONEY},
     block::{
         self,
         merkle::{self, AuthDataRoot},
-        subsidy::{general, funding_streams},
+        subsidy::{funding_streams, general},
         Block, ChainHistoryBlockTxAuthCommitmentHash, ChainHistoryMmrRootHash, Height,
     },
     chain_sync_status::ChainSyncStatus,
@@ -376,13 +376,18 @@ pub fn standard_coinbase_outputs(
     like_zcashd: bool,
 ) -> Vec<(Amount<NonNegative>, transparent::Script)> {
     #[cfg(zcash_unstable = "nsm")]
-    let expected_block_subsidy =
-        general::block_subsidy(height, network, MAX_MONEY.try_into().expect("MAX_MONEY is a valid amount")).expect("valid block subsidy");
+    let expected_block_subsidy = general::block_subsidy(
+        height,
+        network,
+        MAX_MONEY.try_into().expect("MAX_MONEY is a valid amount"),
+    )
+    .expect("valid block subsidy");
     #[cfg(not(zcash_unstable = "nsm"))]
     let expected_block_subsidy =
         general::block_subsidy_pre_nsm(height, network).expect("valid block subsidy");
-    let funding_streams = funding_streams::funding_stream_values(height, network, expected_block_subsidy)
-        .expect("funding stream value calculations are valid for reasonable chain heights");
+    let funding_streams =
+        funding_streams::funding_stream_values(height, network, expected_block_subsidy)
+            .expect("funding stream value calculations are valid for reasonable chain heights");
 
     // Optional TODO: move this into a zebra_consensus function?
     let funding_streams: HashMap<
@@ -393,7 +398,10 @@ pub fn standard_coinbase_outputs(
         .filter_map(|(receiver, amount)| {
             Some((
                 receiver,
-                (amount, funding_streams::funding_stream_address(height, network, receiver)?),
+                (
+                    amount,
+                    funding_streams::funding_stream_address(height, network, receiver)?,
+                ),
             ))
         })
         .collect();

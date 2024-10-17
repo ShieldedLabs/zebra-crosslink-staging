@@ -88,7 +88,6 @@ impl From<amount::Error> for SubsidyError {
     }
 }
 
-
 #[derive(Error, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(any(test, feature = "proptest-impl"), derive(Arbitrary))]
 #[allow(missing_docs)]

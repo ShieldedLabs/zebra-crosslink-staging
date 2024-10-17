@@ -114,7 +114,11 @@ fn check_sprout_anchors() {
 
     // Validate and commit [`block_2`]. This will also check the anchors.
     assert_eq!(
-        validate_and_commit_non_finalized(&finalized_state.db, &mut non_finalized_state, &mut block_2),
+        validate_and_commit_non_finalized(
+            &finalized_state.db,
+            &mut non_finalized_state,
+            &mut block_2
+        ),
         Ok(())
     );
 }
@@ -335,7 +339,11 @@ fn check_sapling_anchors() {
     assert!(check_unmined_tx_anchors_result.is_ok());
 
     assert_eq!(
-        validate_and_commit_non_finalized(&finalized_state.db, &mut non_finalized_state, &mut block2),
+        validate_and_commit_non_finalized(
+            &finalized_state.db,
+            &mut non_finalized_state,
+            &mut block2
+        ),
         Ok(())
     );
 }

@@ -7,20 +7,12 @@ use chrono::Duration;
 use zebra_chain::{
     amount::{Amount, Error as AmountError, NonNegative, MAX_MONEY},
     block::{
-        self,
-        Block,
-        ChainHistoryBlockTxAuthCommitmentHash,
-        CommitmentError,
-        error::BlockError,
-        Height,
-        subsidy::funding_streams,
-        subsidy::general,
+        self, error::BlockError, subsidy::funding_streams, subsidy::general, Block,
+        ChainHistoryBlockTxAuthCommitmentHash, CommitmentError, Height,
     },
     error::{CoinbaseTransactionError, SubsidyError},
     history_tree::HistoryTree,
-    parameters::{
-        subsidy::FundingStreamReceiver, Network, NetworkUpgrade
-    },
+    parameters::{subsidy::FundingStreamReceiver, Network, NetworkUpgrade},
     transaction,
     value_balance::ValueBalance,
     work::difficulty::CompactDifficulty,
@@ -67,7 +59,7 @@ pub(crate) fn block_is_valid_for_recent_chain<C>(
     network: &Network,
     finalized_tip_height: Option<block::Height>,
     relevant_chain: C,
-    pool_value_balance: Option<ValueBalance<NonNegative>>
+    pool_value_balance: Option<ValueBalance<NonNegative>>,
 ) -> Result<(), ValidateContextError>
 where
     C: IntoIterator,
@@ -78,7 +70,6 @@ where
         .expect("finalized state must contain at least one block to do contextual validation");
     check::block_is_not_orphaned(finalized_tip_height, semantically_verified.height)?;
 
-    
     let relevant_chain: Vec<_> = relevant_chain
         .into_iter()
         .take(POW_ADJUSTMENT_BLOCK_SPAN)
@@ -102,24 +93,31 @@ where
 
     if semantically_verified.height > network.slow_start_interval() {
         #[cfg(not(zcash_unstable = "nsm"))]
-        let expected_block_subsidy = general::block_subsidy_pre_nsm(semantically_verified.height, &network)?;
+        let expected_block_subsidy =
+            general::block_subsidy_pre_nsm(semantically_verified.height, network)?;
 
         #[cfg(zcash_unstable = "nsm")]
         let expected_block_subsidy = {
             let money_reserve = if semantically_verified.height > 1.try_into().unwrap() {
-                pool_value_balance.expect("a chain must contain valid pool value balance").money_reserve()
+                pool_value_balance
+                    .expect("a chain must contain valid pool value balance")
+                    .money_reserve()
             } else {
                 MAX_MONEY.try_into().unwrap()
             };
-            general::block_subsidy(semantically_verified.height, &network, money_reserve)?
+            general::block_subsidy(semantically_verified.height, network, money_reserve)?
         };
 
-        subsidy_is_valid(&semantically_verified.block, &network, expected_block_subsidy)?;
+        subsidy_is_valid(
+            &semantically_verified.block,
+            network,
+            expected_block_subsidy,
+        )?;
 
         // TODO: Add link to lockbox stream ZIP
         let expected_deferred_amount = funding_streams::funding_stream_values(
             semantically_verified.height,
-            &network,
+            network,
             expected_block_subsidy,
         )
         .expect("we always expect a funding stream hashmap response even if empty")
@@ -129,14 +127,16 @@ where
         semantically_verified.deferred_balance = Some(expected_deferred_amount);
 
         let coinbase_tx = coinbase_is_first(&semantically_verified.block)?;
-    
+
         check::transaction_miner_fees_are_valid(
             &coinbase_tx,
             semantically_verified.height,
-            semantically_verified.block_miner_fees.expect("block must have miner fees calculated"),
+            semantically_verified
+                .block_miner_fees
+                .expect("block must have miner fees calculated"),
             expected_block_subsidy,
             expected_deferred_amount,
-            &network,
+            network,
         )?;
     }
 
@@ -453,10 +453,12 @@ pub(crate) fn initial_contextual_validity(
         semantically_verified.block.header.previous_block_hash,
     );
 
-    let pool_value_balance = non_finalized_state.best_chain()
+    let pool_value_balance = non_finalized_state
+        .best_chain()
         .map(|chain| chain.chain_value_pools)
         .or_else(|| {
-            finalized_state.finalized_tip_height()
+            finalized_state
+                .finalized_tip_height()
                 .filter(|x| (*x + 1).unwrap() == semantically_verified.height)
                 .map(|_| finalized_state.finalized_value_pool())
         });
@@ -484,7 +486,9 @@ pub(crate) fn initial_contextual_validity(
 /// > transaction as the first transaction in the block.
 ///
 /// <https://zips.z.cash/protocol/protocol.pdf#coinbasetransactions>
-pub fn coinbase_is_first(block: &Block) -> Result<Arc<transaction::Transaction>, CoinbaseTransactionError> {
+pub fn coinbase_is_first(
+    block: &Block,
+) -> Result<Arc<transaction::Transaction>, CoinbaseTransactionError> {
     // # Consensus
     //
     // > A block MUST have at least one transaction
@@ -562,12 +566,9 @@ pub fn subsidy_is_valid(
         // Note: Canopy activation is at the first halving on mainnet, but not on testnet
         // ZIP-1014 only applies to mainnet, ZIP-214 contains the specific rules for testnet
         // funding stream amount values
-        let funding_streams = funding_streams::funding_stream_values(
-            height,
-            network,
-            expected_block_subsidy,
-        )
-        .expect("We always expect a funding stream hashmap response even if empty");
+        let funding_streams =
+            funding_streams::funding_stream_values(height, network, expected_block_subsidy)
+                .expect("We always expect a funding stream hashmap response even if empty");
 
         // # Consensus
         //
@@ -584,16 +585,15 @@ pub fn subsidy_is_valid(
                 continue;
             }
 
-            let address = funding_streams::funding_stream_address(
-                height, network, receiver,
-            )
-            .expect("funding stream receivers other than the deferred pool must have an address");
+            let address = funding_streams::funding_stream_address(height, network, receiver)
+                .expect(
+                    "funding stream receivers other than the deferred pool must have an address",
+                );
 
-            let has_expected_output =
-                funding_streams::filter_outputs_by_address(coinbase, address)
-                    .iter()
-                    .map(zebra_chain::transparent::Output::value)
-                    .any(|value| value == expected_amount);
+            let has_expected_output = funding_streams::filter_outputs_by_address(coinbase, address)
+                .iter()
+                .map(zebra_chain::transparent::Output::value)
+                .any(|value| value == expected_amount);
 
             if !has_expected_output {
                 Err(SubsidyError::FundingStreamNotFound)?;
@@ -647,6 +647,10 @@ pub fn transaction_miner_fees_are_valid(
     )
 }
 
+/// Returns `Ok(())` if the miner fees consensus rule is valid.
+///
+/// [7.1.2]: https://zips.z.cash/protocol/protocol.pdf#txnconsensus
+#[allow(clippy::too_many_arguments)]
 pub fn miner_fees_are_valid(
     transparent_value_balance: Amount,
     sapling_value_balance: Amount,

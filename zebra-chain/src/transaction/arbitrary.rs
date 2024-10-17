@@ -925,7 +925,7 @@ pub fn transaction_to_fake_v5(
         },
         v5 @ V5 { .. } => v5.clone(),
         #[cfg(zcash_unstable = "nsm")]
-        ZFuture {  
+        ZFuture {
             inputs,
             outputs,
             lock_time,

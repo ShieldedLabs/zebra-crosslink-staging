@@ -8,10 +8,10 @@ use tokio::sync::{
 
 use zebra_chain::{
     amount::MAX_MONEY,
-    block::{self, Height, subsidy::{
-            funding_streams::funding_stream_values,
-            general,
-        },
+    block::{
+        self,
+        subsidy::{funding_streams::funding_stream_values, general},
+        Height,
     },
     parameters::subsidy::FundingStreamReceiver,
     transparent::EXTRA_ZEBRA_COINBASE_DATA,
@@ -184,13 +184,14 @@ pub fn write_blocks_from_channels(
             std::mem::drop(ordered_block);
             continue;
         }
-        
+
         let network = finalized_state.network();
+        // We can't get the block subsidy for blocks with heights in the slow start interval, so we
+        // omit the calculation of the expected deferred amount.
         let expected_deferred_amount = if ordered_block_height > network.slow_start_interval() {
-            // We can't get the block subsidy for blocks with heights in the slow start interval, so we
-            // omit the calculation of the expected deferred amount.
             #[cfg(not(zcash_unstable = "nsm"))]
-            let expected_block_subsidy = general::block_subsidy_pre_nsm(ordered_block_height, &network).expect("todo!");
+            let expected_block_subsidy =
+                general::block_subsidy_pre_nsm(ordered_block_height, &network).expect("valid block subsidy");
 
             #[cfg(zcash_unstable = "nsm")]
             let expected_block_subsidy = {
@@ -199,11 +200,13 @@ pub fn write_blocks_from_channels(
                 } else {
                     MAX_MONEY.try_into().unwrap()
                 };
-                general::block_subsidy(ordered_block_height, &network, money_reserve).expect("todo!")
+                general::block_subsidy(ordered_block_height, &network, money_reserve)
+                    .expect("valid block subsidy")
             };
 
             // TODO: Add link to lockbox stream ZIP
-            funding_stream_values(ordered_block_height, &network, expected_block_subsidy).expect("todo!")
+            funding_stream_values(ordered_block_height, &network, expected_block_subsidy)
+                .expect("we always expect a funding stream hashmap response even if empty")
                 .remove(&FundingStreamReceiver::Deferred)
         } else {
             None
@@ -256,7 +259,8 @@ pub fn write_blocks_from_channels(
     // Save any errors to propagate down to queued child blocks
     let mut parent_error_map: IndexMap<block::Hash, CloneError> = IndexMap::new();
 
-    while let Some((mut queued_child, rsp_tx)) = non_finalized_block_write_receiver.blocking_recv() {
+    while let Some((mut queued_child, rsp_tx)) = non_finalized_block_write_receiver.blocking_recv()
+    {
         let child_hash = queued_child.hash;
         let parent_hash = queued_child.block.header.previous_block_hash;
         let parent_error = parent_error_map.get(&parent_hash);

@@ -18,8 +18,9 @@ use tracing::Instrument;
 
 use zebra_chain::{
     amount::{Amount, NonNegative},
-    block, orchard,
+    block,
     error::CoinbaseTransactionError,
+    orchard,
     parameters::{Network, NetworkUpgrade},
     primitives::Groth16Proof,
     sapling,
