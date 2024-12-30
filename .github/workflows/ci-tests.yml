@@ -147,9 +147,10 @@ jobs:
       image_digest: ${{ needs.build.outputs.image_digest }}
     secrets: inherit
 
+  # Disabled during `zebra-crosslink` prototyping phase to avoid GCP or Mainnet integrations
   # Runs Zebra integration tests
-  integration-tests:
-    name: Integration tests
-    needs: build
-    uses: ./.github/workflows/sub-ci-integration-tests-gcp.yml
-    secrets: inherit
+  #integration-tests:
+  #  name: Integration tests
+  #  needs: build
+  #  uses: ./.github/workflows/sub-ci-integration-tests-gcp.yml
+  #  secrets: inherit
