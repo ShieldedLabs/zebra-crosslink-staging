@@ -61,7 +61,7 @@ pub fn select_mempool_transactions(
     mempool_tx_deps: TransactionDependencies,
     like_zcashd: bool,
     extra_coinbase_data: Vec<u8>,
-    #[cfg(zcash_unstable = "nsm")] burn_amount: Option<Amount<NonNegative>>,
+    #[cfg(zcash_unstable = "nsm")] zip233_amount: Option<Amount<NonNegative>>,
 ) -> Vec<SelectedMempoolTx> {
     // Use a fake coinbase transaction to break the dependency between transaction
     // selection, the miner fee, and the fee payment in the coinbase transaction.
@@ -72,7 +72,7 @@ pub fn select_mempool_transactions(
         like_zcashd,
         extra_coinbase_data,
         #[cfg(zcash_unstable = "nsm")]
-        burn_amount,
+        zip233_amount,
     );
 
     let tx_dependencies = mempool_tx_deps.dependencies();
@@ -152,7 +152,7 @@ pub fn fake_coinbase_transaction(
     miner_address: &transparent::Address,
     like_zcashd: bool,
     extra_coinbase_data: Vec<u8>,
-    #[cfg(zcash_unstable = "nsm")] burn_amount: Option<Amount<NonNegative>>,
+    #[cfg(zcash_unstable = "nsm")] zip233_amount: Option<Amount<NonNegative>>,
 ) -> TransactionTemplate<NegativeOrZero> {
     // Block heights are encoded as variable-length (script) and `u32` (lock time, expiry height).
     // They can also change the `u32` consensus branch id.
@@ -173,7 +173,7 @@ pub fn fake_coinbase_transaction(
         like_zcashd,
         extra_coinbase_data,
         #[cfg(zcash_unstable = "nsm")]
-        burn_amount,
+        zip233_amount,
     );
 
     TransactionTemplate::from_coinbase(&coinbase_tx, miner_fee)

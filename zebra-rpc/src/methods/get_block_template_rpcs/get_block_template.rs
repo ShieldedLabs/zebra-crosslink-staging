@@ -282,7 +282,7 @@ pub fn generate_coinbase_and_roots(
     history_tree: Arc<zebra_chain::history_tree::HistoryTree>,
     like_zcashd: bool,
     extra_coinbase_data: Vec<u8>,
-    #[cfg(zcash_unstable = "nsm")] burn_amount: Option<Amount<NonNegative>>,
+    #[cfg(zcash_unstable = "nsm")] zip233_amount: Option<Amount<NonNegative>>,
 ) -> (TransactionTemplate<NegativeOrZero>, DefaultRoots) {
     // Generate the coinbase transaction
     let miner_fee = calculate_miner_fee(mempool_txs);
@@ -294,7 +294,7 @@ pub fn generate_coinbase_and_roots(
         like_zcashd,
         extra_coinbase_data,
         #[cfg(zcash_unstable = "nsm")]
-        burn_amount,
+        zip233_amount,
     );
 
     // Calculate block default roots
@@ -328,7 +328,7 @@ pub fn generate_coinbase_transaction(
     miner_fee: Amount<NonNegative>,
     like_zcashd: bool,
     extra_coinbase_data: Vec<u8>,
-    #[cfg(zcash_unstable = "nsm")] burn_amount: Option<Amount<NonNegative>>,
+    #[cfg(zcash_unstable = "nsm")] zip233_amount: Option<Amount<NonNegative>>,
 ) -> UnminedTx {
     let outputs = standard_coinbase_outputs(network, height, miner_address, miner_fee, like_zcashd);
 
@@ -352,7 +352,7 @@ pub fn generate_coinbase_transaction(
                     outputs,
                     extra_coinbase_data,
                     like_zcashd,
-                    burn_amount,
+                    zip233_amount,
                 )
                 .into()
             }
@@ -373,7 +373,7 @@ pub fn generate_coinbase_transaction(
                     outputs,
                     extra_coinbase_data,
                     like_zcashd,
-                    burn_amount,
+                    zip233_amount,
                 )
                 .into()
             }

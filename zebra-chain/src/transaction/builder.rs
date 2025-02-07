@@ -18,7 +18,7 @@ impl Transaction {
         outputs: impl IntoIterator<Item = (Amount<NonNegative>, transparent::Script)>,
         extra_coinbase_data: Vec<u8>,
         like_zcashd: bool,
-        burn_amount: Option<Amount<NonNegative>>,
+        zip233_amount: Option<Amount<NonNegative>>,
     ) -> Transaction {
         let mut extra_data = None;
         let mut sequence = None;
@@ -117,8 +117,8 @@ impl Transaction {
             sapling_shielded_data: None,
             orchard_shielded_data: None,
 
-            // > The NSM burn_amount field [ZIP-233] must be set. It can be set to 0.
-            burn_amount: burn_amount.unwrap_or(Amount::zero()),
+            // > The NSM zip233_amount field [ZIP-233] must be set. It can be set to 0.
+            zip233_amount: zip233_amount.unwrap_or(Amount::zero()),
         }
     }
 

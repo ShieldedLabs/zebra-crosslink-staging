@@ -259,7 +259,7 @@ where
         long_poll_id: None,
         _work_id: None,
         #[cfg(zcash_unstable = "nsm")]
-        burn_amount: None,
+        zip233_amount: None,
     };
 
     // Shut down the task when all the template receivers are dropped, or Zebra shuts down.

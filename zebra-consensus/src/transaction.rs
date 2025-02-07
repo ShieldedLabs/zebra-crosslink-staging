@@ -566,9 +566,9 @@ where
             // Get the `value_balance` to calculate the transaction fee.
             let value_balance = tx.value_balance(&spent_utxos);
 
-            let burn_amount = match *tx {
+            let zip233_amount = match *tx {
                 #[cfg(zcash_unstable = "nsm")]
-                Transaction::ZFuture{ .. } => tx.burn_amount(),
+                Transaction::ZFuture{ .. } => tx.zip233_amount(),
                 _ => Amount::zero()
             };
 
@@ -578,7 +578,7 @@ where
                 // TODO: deduplicate this code with remaining_transaction_value()?
                 miner_fee = value_balance
                     .map(|vb| vb.remaining_transaction_value())
-                    .map(|tx_rtv| tx_rtv - burn_amount)
+                    .map(|tx_rtv| tx_rtv - zip233_amount)
                     .or(Err(TransactionError::IncorrectFee))?
                     .ok();
             }
