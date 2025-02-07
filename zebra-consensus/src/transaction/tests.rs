@@ -2134,7 +2134,7 @@ async fn v5_coinbase_transaction_expiry_height() {
 
     #[cfg(zcash_unstable = "nsm")]
     new_transaction
-        .update_network_upgrade(NetworkUpgrade::ZFuture)
+        .update_network_upgrade(NetworkUpgrade::Nu7)
         .expect("updating the network upgrade for a V5 tx should succeed");
 
     let verification_result = verifier
@@ -2240,7 +2240,7 @@ async fn v5_transaction_with_exceeding_expiry_height() {
         #[cfg(not(zcash_unstable = "nsm"))]
         network_upgrade: NetworkUpgrade::Nu6,
         #[cfg(zcash_unstable = "nsm")]
-        network_upgrade: NetworkUpgrade::ZFuture,
+        network_upgrade: NetworkUpgrade::Nu7,
     };
 
     let transaction_hash = transaction.hash();

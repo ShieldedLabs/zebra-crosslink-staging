@@ -140,7 +140,7 @@ impl Commitment {
                 ChainHistoryBlockTxAuthCommitmentHash(bytes),
             )),
             #[cfg(zcash_unstable = "nsm")]
-            (ZFuture, _) => Ok(ChainHistoryBlockTxAuthCommitment(
+            (Nu7, _) => Ok(ChainHistoryBlockTxAuthCommitment(
                 ChainHistoryBlockTxAuthCommitmentHash(bytes),
             )),
         }

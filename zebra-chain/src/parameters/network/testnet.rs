@@ -207,8 +207,8 @@ pub struct ConfiguredActivationHeights {
     #[serde(rename = "NU6")]
     pub nu6: Option<u32>,
     #[cfg(zcash_unstable = "nsm")]
-    #[serde(rename = "ZFuture")]
-    pub zfuture: Option<u32>,
+    #[serde(rename = "NU7")]
+    pub nu7: Option<u32>,
 }
 
 /// Builder for the [`Parameters`] struct.
@@ -344,7 +344,7 @@ impl ParametersBuilder {
             nu5,
             nu6,
             #[cfg(zcash_unstable = "nsm")]
-            zfuture,
+            nu7,
         }: ConfiguredActivationHeights,
     ) -> Self {
         use NetworkUpgrade::*;
@@ -370,7 +370,7 @@ impl ParametersBuilder {
 
         #[cfg(zcash_unstable = "nsm")]
         let activation_heights =
-            activation_heights.chain(zfuture.into_iter().map(|h| (h, ZFuture)));
+            activation_heights.chain(nu7.into_iter().map(|h| (h, Nu7)));
 
         let activation_heights: BTreeMap<_, _> = activation_heights
             .map(|(h, nu)| (h.try_into().expect("activation height must be valid"), nu))
@@ -638,7 +638,7 @@ impl Parameters {
                 nu5: nu5_activation_height,
                 nu6: nu6_activation_height,
                 #[cfg(zcash_unstable = "nsm")]
-                zfuture: nu6_activation_height.map(|height| height + 1),
+                nu7: nu6_activation_height.map(|height| height + 1),
                 ..Default::default()
             })
             .with_halving_interval(PRE_BLOSSOM_REGTEST_HALVING_INTERVAL);

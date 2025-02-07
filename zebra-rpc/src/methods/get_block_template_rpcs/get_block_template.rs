@@ -336,7 +336,7 @@ pub fn generate_coinbase_transaction(
         #[cfg(zcash_unstable = "nsm")]
         {
             let network_upgrade = NetworkUpgrade::current(network, height);
-            if network_upgrade < NetworkUpgrade::ZFuture {
+            if network_upgrade < NetworkUpgrade::Nu7 {
                 Transaction::new_v4_coinbase(
                     network,
                     height,
@@ -364,7 +364,7 @@ pub fn generate_coinbase_transaction(
         #[cfg(zcash_unstable = "nsm")]
         {
             let network_upgrade = NetworkUpgrade::current(network, height);
-            if network_upgrade < NetworkUpgrade::ZFuture {
+            if network_upgrade < NetworkUpgrade::Nu7 {
                 Transaction::new_v5_coinbase(network, height, outputs, extra_coinbase_data).into()
             } else {
                 Transaction::new_v6_coinbase(

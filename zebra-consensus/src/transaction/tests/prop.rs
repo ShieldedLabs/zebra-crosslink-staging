@@ -362,7 +362,7 @@ fn sanitize_transaction_version(
             Overwinter => 3,
             Sapling | Blossom | Heartwood | Canopy => 4,
             Nu5 | Nu6 => 5,
-            ZFuture => 0x00FF,
+            Nu7 => 0x00FF,
         }
     };
 

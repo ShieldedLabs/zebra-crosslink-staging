@@ -952,7 +952,7 @@ where
             )),
 
             #[cfg(zcash_unstable = "nsm")]
-            NetworkUpgrade::ZFuture => Ok(()),
+            NetworkUpgrade::Nu7 => Ok(()),
         }
     }
 
@@ -1032,7 +1032,7 @@ where
             // id is checked in zebra-chain crate, in the transaction serialize.
             NetworkUpgrade::Nu5 | NetworkUpgrade::Nu6 => Ok(()),
             #[cfg(zcash_unstable = "nsm")]
-            NetworkUpgrade::ZFuture => Ok(()),
+            NetworkUpgrade::Nu7 => Ok(()),
 
             // Does not support V5 transactions
             NetworkUpgrade::Genesis
@@ -1061,7 +1061,7 @@ where
         let transaction = request.transaction();
         let nu = request.upgrade(network);
 
-        if nu != NetworkUpgrade::ZFuture {
+        if nu != NetworkUpgrade::Nu7 {
             return Err(TransactionError::UnsupportedByNetworkUpgrade(
                 transaction.version(),
                 nu,

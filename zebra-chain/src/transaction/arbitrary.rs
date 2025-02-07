@@ -784,7 +784,7 @@ impl Arbitrary for Transaction {
             ]
             .boxed(),
             #[cfg(zcash_unstable = "nsm")]
-            NetworkUpgrade::ZFuture => prop_oneof![
+            NetworkUpgrade::Nu7 => prop_oneof![
                 Self::v4_strategy(ledger_state.clone()),
                 Self::v5_strategy(ledger_state)
             ]

@@ -31,7 +31,7 @@ fn check_parameters_impl() {
         zp_consensus::NetworkUpgrade::Canopy,
         zp_consensus::NetworkUpgrade::Nu5,
         #[cfg(zcash_unstable = "nsm")]
-        zp_consensus::NetworkUpgrade::ZFuture,
+        zp_consensus::NetworkUpgrade::Nu7,
     ];
 
     for (network, zp_network) in [
@@ -113,7 +113,7 @@ fn activates_network_upgrades_correctly() {
             #[cfg(not(zcash_unstable = "nsm"))]
             nu6: Some(expected_activation_height),
             #[cfg(zcash_unstable = "nsm")]
-            zfuture: Some(expected_activation_height),
+            nu7: Some(expected_activation_height),
             ..Default::default()
         })
         .to_network();
@@ -146,7 +146,7 @@ fn activates_network_upgrades_correctly() {
         // TODO: Remove this once the testnet parameters are being serialized (#8920).
         (Height(100), NetworkUpgrade::Nu5),
         #[cfg(zcash_unstable = "nsm")]
-        (Height(101), NetworkUpgrade::ZFuture),
+        (Height(101), NetworkUpgrade::Nu7),
     ];
 
     for (network, expected_activation_heights) in [

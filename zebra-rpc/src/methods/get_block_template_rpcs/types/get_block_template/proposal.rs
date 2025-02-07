@@ -221,7 +221,7 @@ pub fn proposal_block_from_template(
             block_commitments_hash.bytes_in_serialized_order().into()
         }
         #[cfg(zcash_unstable = "nsm")]
-        NetworkUpgrade::ZFuture => block_commitments_hash.bytes_in_serialized_order().into(),
+        NetworkUpgrade::Nu7 => block_commitments_hash.bytes_in_serialized_order().into(),
     };
 
     Ok(Block {

@@ -72,7 +72,7 @@ expression: info
       "status": "pending"
     },
     "ffffffff": {
-      "name": "ZFuture",
+      "name": "NU7",
       "activationheight": 3000000,
       "status": "pending"
     }
