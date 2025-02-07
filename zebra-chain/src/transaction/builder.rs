@@ -9,10 +9,10 @@ use crate::{
 };
 
 impl Transaction {
-    /// Returns a new version zfuture coinbase transaction for `network` and `height`,
+    /// Returns a new version 6 coinbase transaction for `network` and `height`,
     /// which contains the specified `outputs`.
     #[cfg(zcash_unstable = "nsm")]
-    pub fn new_zfuture_coinbase(
+    pub fn new_v6_coinbase(
         network: &Network,
         height: Height,
         outputs: impl IntoIterator<Item = (Amount<NonNegative>, transparent::Script)>,
@@ -88,7 +88,7 @@ impl Transaction {
             "invalid coinbase transaction: must have at least one output"
         );
 
-        Transaction::ZFuture {
+        Transaction::V6 {
             // > The transaction version number MUST be 4 or 5. ...
             // > If the transaction version number is 5 then the version group ID
             // > MUST be 0x26A7270A.

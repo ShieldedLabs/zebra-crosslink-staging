@@ -325,7 +325,7 @@ fn mock_transparent_transaction(
             network_upgrade,
         },
         #[cfg(zcash_unstable = "nsm")]
-        255 => Transaction::ZFuture {
+        255 => Transaction::V6 {
             inputs,
             outputs,
             lock_time,

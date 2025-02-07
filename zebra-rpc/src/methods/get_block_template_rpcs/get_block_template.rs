@@ -346,7 +346,7 @@ pub fn generate_coinbase_transaction(
                 )
                 .into()
             } else {
-                Transaction::new_zfuture_coinbase(
+                Transaction::new_v6_coinbase(
                     network,
                     height,
                     outputs,
@@ -367,7 +367,7 @@ pub fn generate_coinbase_transaction(
             if network_upgrade < NetworkUpgrade::ZFuture {
                 Transaction::new_v5_coinbase(network, height, outputs, extra_coinbase_data).into()
             } else {
-                Transaction::new_zfuture_coinbase(
+                Transaction::new_v6_coinbase(
                     network,
                     height,
                     outputs,

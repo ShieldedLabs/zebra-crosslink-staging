@@ -8,13 +8,10 @@ use halo2::pasta::group::ff::PrimeField;
 use hex::FromHex;
 use reddsa::{orchard::Binding, orchard::SpendAuth, Signature};
 
-#[cfg(zcash_unstable = "nsm")]
-use crate::parameters::TX_ZFUTURE_VERSION_GROUP_ID;
-
 use crate::{
     amount,
     block::MAX_BLOCK_BYTES,
-    parameters::{OVERWINTER_VERSION_GROUP_ID, SAPLING_VERSION_GROUP_ID, TX_V5_VERSION_GROUP_ID},
+    parameters::{OVERWINTER_VERSION_GROUP_ID, SAPLING_VERSION_GROUP_ID, TX_V5_VERSION_GROUP_ID, TX_V6_VERSION_GROUP_ID},
     primitives::{Halo2Proof, ZkSnarkProof},
     serialization::{
         zcash_deserialize_external_count, zcash_serialize_empty_list,
@@ -677,7 +674,7 @@ impl ZcashSerialize for Transaction {
             }
 
             #[cfg(zcash_unstable = "nsm")]
-            Transaction::ZFuture {
+            Transaction::V6 {
                 network_upgrade,
                 lock_time,
                 expiry_height,
@@ -688,7 +685,7 @@ impl ZcashSerialize for Transaction {
                 zip233_amount,
             } => {
                 // Denoted as `nVersionGroupId` in the spec.
-                writer.write_u32::<LittleEndian>(TX_ZFUTURE_VERSION_GROUP_ID)?;
+                writer.write_u32::<LittleEndian>(TX_V6_VERSION_GROUP_ID)?;
 
                 // Denoted as `nConsensusBranchId` in the spec.
                 writer.write_u32::<LittleEndian>(u32::from(
@@ -975,12 +972,12 @@ impl ZcashDeserialize for Transaction {
                 })
             }
             #[cfg(zcash_unstable = "nsm")]
-            (ZFUTURE_TX_VERSION, true) => {
+            (6, true) => {
                 // Denoted as `nVersionGroupId` in the spec.
                 let id = limited_reader.read_u32::<LittleEndian>()?;
-                if id != TX_ZFUTURE_VERSION_GROUP_ID {
+                if id != TX_V6_VERSION_GROUP_ID {
                     return Err(SerializationError::Parse(
-                        "expected TX_ZFUTURE_VERSION_GROUP_ID",
+                        "expected TX_V6_VERSION_GROUP_ID",
                     ));
                 }
                 // Denoted as `nConsensusBranchId` in the spec.
@@ -1014,7 +1011,7 @@ impl ZcashDeserialize for Transaction {
                 // Denoted as `zip233_amount` in the spec.
                 let zip233_amount = (&mut limited_reader).zcash_deserialize_into()?;
 
-                Ok(Transaction::ZFuture {
+                Ok(Transaction::V6 {
                     network_upgrade,
                     lock_time,
                     expiry_height,

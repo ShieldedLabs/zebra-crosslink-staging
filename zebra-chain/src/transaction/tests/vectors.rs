@@ -917,7 +917,7 @@ fn binding_signatures() {
                         }
                     }
                     #[cfg(zcash_unstable = "nsm")]
-                    Transaction::ZFuture {
+                    Transaction::V6 {
                         sapling_shielded_data, 
                         .. 
                     } => {

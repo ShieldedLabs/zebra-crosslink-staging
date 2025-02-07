@@ -524,10 +524,10 @@ where
                     orchard_shielded_data,
                 )?,
                 #[cfg(zcash_unstable = "nsm")]
-                Transaction::ZFuture {
+                Transaction::V6 {
                     sapling_shielded_data,
                     orchard_shielded_data,
-                     .. } => Self::verify_zfuture_transaction(
+                     .. } => Self::verify_v6_transaction(
                     &req,
                     &network,
                     script_verifier,
@@ -568,7 +568,7 @@ where
 
             let zip233_amount = match *tx {
                 #[cfg(zcash_unstable = "nsm")]
-                Transaction::ZFuture{ .. } => tx.zip233_amount(),
+                Transaction::V6{ .. } => tx.zip233_amount(),
                 _ => Amount::zero()
             };
 
@@ -1048,9 +1048,9 @@ where
         }
     }
 
-    /// Verify a ZFUTURE transaction.
+    /// Verify a V6 transaction.
     #[cfg(zcash_unstable = "nsm")]
-    fn verify_zfuture_transaction(
+    fn verify_v6_transaction(
         request: &Request,
         network: &Network,
         script_verifier: script::Verifier,
