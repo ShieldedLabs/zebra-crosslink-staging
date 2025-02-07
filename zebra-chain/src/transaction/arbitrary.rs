@@ -1009,6 +1009,8 @@ pub fn v5_transactions<'b>(
         | Transaction::V2 { .. }
         | Transaction::V3 { .. }
         | Transaction::V4 { .. } => None,
+        #[cfg(zcash_unstable = "nsm")]
+        Transaction::ZFuture { .. } => None,
         ref tx @ Transaction::V5 { .. } => Some(tx.clone()),
     })
 }

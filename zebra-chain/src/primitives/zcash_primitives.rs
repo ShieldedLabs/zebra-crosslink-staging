@@ -8,7 +8,7 @@ use zcash_protocol::value::BalanceError;
 
 use crate::{
     amount::{Amount, NonNegative},
-    parameters::{Network, NetworkUpgrade},
+    parameters::{ConsensusBranchId, Network, NetworkUpgrade},
     serialization::ZcashSerialize,
     transaction::{AuthDigest, HashType, SigHash, Transaction},
     transparent::{self, Script},

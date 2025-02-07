@@ -885,6 +885,13 @@ where
             "selecting transactions for the template from the mempool"
         );
 
+        #[cfg(zcash_unstable = "nsm")]
+        let burn_amount = if let Some(params) = parameters {
+            params.burn_amount
+        } else {
+            None
+        };
+
         // Randomly select some mempool transactions.
         let mempool_txs = zip317::select_mempool_transactions(
             &network,
@@ -917,6 +924,8 @@ where
             submit_old,
             debug_like_zcashd,
             extra_coinbase_data,
+            #[cfg(zcash_unstable = "nsm")]
+            burn_amount,
         );
 
         Ok(response.into())

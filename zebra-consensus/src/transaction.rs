@@ -1059,19 +1059,17 @@ where
         orchard_shielded_data: &Option<orchard::ShieldedData>,
     ) -> Result<AsyncChecks, TransactionError> {
         let transaction = request.transaction();
-        let upgrade = request.upgrade(network);
+        let nu = request.upgrade(network);
 
-        if upgrade != NetworkUpgrade::ZFuture {
+        if nu != NetworkUpgrade::ZFuture {
             return Err(TransactionError::UnsupportedByNetworkUpgrade(
                 transaction.version(),
-                upgrade,
+                nu,
             ));
         }
 
         let shielded_sighash = transaction.sighash(
-            upgrade
-                .branch_id()
-                .expect("Overwinter-onwards must have branch ID, and we checkpoint on Canopy"),
+            nu,
             HashType::ALL,
             cached_ffi_transaction.all_previous_outputs(),
             None,

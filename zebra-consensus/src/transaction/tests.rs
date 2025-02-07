@@ -2127,8 +2127,14 @@ async fn v5_coinbase_transaction_expiry_height() {
 
     // Setting the new expiry height as the block height will activate NU6, so we need to set NU6
     // for the tx as well.
+    #[cfg(not(zcash_unstable = "nsm"))]
     new_transaction
         .update_network_upgrade(NetworkUpgrade::Nu6)
+        .expect("updating the network upgrade for a V5 tx should succeed");
+
+    #[cfg(zcash_unstable = "nsm")]
+    new_transaction
+        .update_network_upgrade(NetworkUpgrade::ZFuture)
         .expect("updating the network upgrade for a V5 tx should succeed");
 
     let verification_result = verifier
@@ -2231,7 +2237,10 @@ async fn v5_transaction_with_exceeding_expiry_height() {
         expiry_height,
         sapling_shielded_data: None,
         orchard_shielded_data: None,
+        #[cfg(not(zcash_unstable = "nsm"))]
         network_upgrade: NetworkUpgrade::Nu6,
+        #[cfg(zcash_unstable = "nsm")]
+        network_upgrade: NetworkUpgrade::ZFuture,
     };
 
     let transaction_hash = transaction.hash();

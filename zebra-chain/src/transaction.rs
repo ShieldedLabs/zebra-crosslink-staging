@@ -1416,6 +1416,19 @@ impl Transaction {
     pub fn has_shielded_data(&self) -> bool {
         self.has_shielded_inputs() || self.has_shielded_outputs()
     }
+
+    /// Access the transparent inputs of this transaction, regardless of version.
+    #[cfg(zcash_unstable = "nsm")]
+    pub fn burn_amount(&self) -> Amount<NonNegative> {
+        match self {
+            Transaction::V1 { .. }
+            | Transaction::V2 { .. }
+            | Transaction::V3 { .. }
+            | Transaction::V4 { .. }
+            | Transaction::V5 { .. } => Amount::zero(),
+            Transaction::ZFuture { burn_amount, .. } => *burn_amount,
+        }
+    }
 }
 
 #[cfg(any(test, feature = "proptest-impl"))]
@@ -1491,18 +1504,6 @@ impl Transaction {
             Transaction::V5 { ref mut inputs, .. } => inputs,
             #[cfg(zcash_unstable = "nsm")]
             Transaction::ZFuture { ref mut inputs, .. } => inputs,
-        }
-    }
-    /// Access the transparent inputs of this transaction, regardless of version.
-    #[cfg(zcash_unstable = "nsm")]
-    pub fn burn_amount(&self) -> Amount<NonNegative> {
-        match self {
-            Transaction::V1 { .. }
-            | Transaction::V2 { .. }
-            | Transaction::V3 { .. }
-            | Transaction::V4 { .. }
-            | Transaction::V5 { .. } => Amount::zero(),
-            Transaction::ZFuture { burn_amount, .. } => *burn_amount,
         }
     }
 
