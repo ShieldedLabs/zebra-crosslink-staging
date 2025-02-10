@@ -673,7 +673,6 @@ impl ZcashSerialize for Transaction {
                 orchard_shielded_data.zcash_serialize(&mut writer)?;
             }
 
-            #[cfg(zcash_unstable = "nsm")]
             Transaction::V6 {
                 network_upgrade,
                 lock_time,
@@ -971,7 +970,6 @@ impl ZcashDeserialize for Transaction {
                     orchard_shielded_data,
                 })
             }
-            #[cfg(zcash_unstable = "nsm")]
             (6, true) => {
                 // Denoted as `nVersionGroupId` in the spec.
                 let id = limited_reader.read_u32::<LittleEndian>()?;

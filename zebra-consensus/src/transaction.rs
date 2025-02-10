@@ -523,7 +523,6 @@ where
                     sapling_shielded_data,
                     orchard_shielded_data,
                 )?,
-                #[cfg(zcash_unstable = "nsm")]
                 Transaction::V6 {
                     sapling_shielded_data,
                     orchard_shielded_data,
@@ -567,7 +566,6 @@ where
             let value_balance = tx.value_balance(&spent_utxos);
 
             let zip233_amount = match *tx {
-                #[cfg(zcash_unstable = "nsm")]
                 Transaction::V6{ .. } => tx.zip233_amount(),
                 _ => Amount::zero()
             };
@@ -941,7 +939,8 @@ where
             | NetworkUpgrade::Heartwood
             | NetworkUpgrade::Canopy
             | NetworkUpgrade::Nu5
-            | NetworkUpgrade::Nu6 => Ok(()),
+            | NetworkUpgrade::Nu6
+            | NetworkUpgrade::Nu7 => Ok(()),
 
             // Does not support V4 transactions
             NetworkUpgrade::Genesis
@@ -950,9 +949,6 @@ where
                 transaction.version(),
                 network_upgrade,
             )),
-
-            #[cfg(zcash_unstable = "nsm")]
-            NetworkUpgrade::Nu7 => Ok(()),
         }
     }
 
@@ -1030,9 +1026,7 @@ where
             //
             // Note: Here we verify the transaction version number of the above rule, the group
             // id is checked in zebra-chain crate, in the transaction serialize.
-            NetworkUpgrade::Nu5 | NetworkUpgrade::Nu6 => Ok(()),
-            #[cfg(zcash_unstable = "nsm")]
-            NetworkUpgrade::Nu7 => Ok(()),
+            NetworkUpgrade::Nu5 | NetworkUpgrade::Nu6 | NetworkUpgrade::Nu7 => Ok(()),
 
             // Does not support V5 transactions
             NetworkUpgrade::Genesis
@@ -1049,7 +1043,6 @@ where
     }
 
     /// Verify a V6 transaction.
-    #[cfg(zcash_unstable = "nsm")]
     fn verify_v6_transaction(
         request: &Request,
         network: &Network,

@@ -206,7 +206,6 @@ pub struct ConfiguredActivationHeights {
     /// Activation height for `NU6` network upgrade.
     #[serde(rename = "NU6")]
     pub nu6: Option<u32>,
-    #[cfg(zcash_unstable = "nsm")]
     #[serde(rename = "NU7")]
     pub nu7: Option<u32>,
 }
@@ -343,7 +342,6 @@ impl ParametersBuilder {
             canopy,
             nu5,
             nu6,
-            #[cfg(zcash_unstable = "nsm")]
             nu7,
         }: ConfiguredActivationHeights,
     ) -> Self {
@@ -366,11 +364,8 @@ impl ParametersBuilder {
             .chain(heartwood.into_iter().map(|h| (h, Heartwood)))
             .chain(canopy.into_iter().map(|h| (h, Canopy)))
             .chain(nu5.into_iter().map(|h| (h, Nu5)))
-            .chain(nu6.into_iter().map(|h| (h, Nu6)));
-
-        #[cfg(zcash_unstable = "nsm")]
-        let activation_heights =
-            activation_heights.chain(nu7.into_iter().map(|h| (h, Nu7)));
+            .chain(nu6.into_iter().map(|h| (h, Nu6)))
+            .chain(nu7.into_iter().map(|h| (h, Nu7)));
 
         let activation_heights: BTreeMap<_, _> = activation_heights
             .map(|(h, nu)| (h.try_into().expect("activation height must be valid"), nu))
@@ -623,6 +618,7 @@ impl Parameters {
     ) -> Self {
         #[cfg(any(test, feature = "proptest-impl"))]
         let nu5_activation_height = nu5_activation_height.or(Some(100));
+        let nu7_activation_height = nu6_activation_height.or(nu5_activation_height).map(|h| h + 1);
 
         let parameters = Self::build()
             .with_genesis_hash(REGTEST_GENESIS_HASH)
@@ -637,8 +633,7 @@ impl Parameters {
                 canopy: Some(1),
                 nu5: nu5_activation_height,
                 nu6: nu6_activation_height,
-                #[cfg(zcash_unstable = "nsm")]
-                nu7: nu6_activation_height.map(|height| height + 1),
+                nu7: nu7_activation_height,
                 ..Default::default()
             })
             .with_halving_interval(PRE_BLOSSOM_REGTEST_HALVING_INTERVAL);

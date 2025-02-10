@@ -136,11 +136,7 @@ impl Commitment {
                 }
             }
             (Heartwood | Canopy, _) => Ok(ChainHistoryRoot(ChainHistoryMmrRootHash(bytes))),
-            (Nu5 | Nu6, _) => Ok(ChainHistoryBlockTxAuthCommitment(
-                ChainHistoryBlockTxAuthCommitmentHash(bytes),
-            )),
-            #[cfg(zcash_unstable = "nsm")]
-            (Nu7, _) => Ok(ChainHistoryBlockTxAuthCommitment(
+            (Nu5 | Nu6 | Nu7, _) => Ok(ChainHistoryBlockTxAuthCommitment(
                 ChainHistoryBlockTxAuthCommitmentHash(bytes),
             )),
         }

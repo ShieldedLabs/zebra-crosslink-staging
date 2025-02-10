@@ -258,7 +258,6 @@ where
         capabilities: vec![LongPoll, CoinbaseTxn],
         long_poll_id: None,
         _work_id: None,
-        #[cfg(zcash_unstable = "nsm")]
         zip233_amount: None,
     };
 

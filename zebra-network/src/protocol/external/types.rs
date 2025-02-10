@@ -106,9 +106,7 @@ impl Version {
             (Mainnet, Nu5) => 170_100,
             (Testnet(params), Nu6) if params.is_default_testnet() => 170_110,
             (Mainnet, Nu6) => 170_120,
-            #[cfg(zcash_unstable = "nsm")]
             (Testnet(params), Nu7) if params.is_default_testnet() => 170_130,
-            #[cfg(zcash_unstable = "nsm")]
             (Mainnet, Nu7) => 170_140,
 
             // It should be fine to reject peers with earlier network protocol versions on custom testnets for now.
@@ -209,11 +207,7 @@ mod test {
         let _init_guard = zebra_test::init();
 
         let highest_network_upgrade = NetworkUpgrade::current(network, block::Height::MAX);
-        #[cfg(zcash_unstable = "nsm")]
         assert!(highest_network_upgrade == Nu7,
-                "expected coverage of all network upgrades: add the new network upgrade to the list in this test");
-        #[cfg(not(zcash_unstable = "nsm"))]
-        assert!(highest_network_upgrade == Nu6 || highest_network_upgrade == Nu5,
                 "expected coverage of all network upgrades: add the new network upgrade to the list in this test");
 
         for &network_upgrade in &[
@@ -225,7 +219,6 @@ mod test {
             Canopy,
             Nu5,
             Nu6,
-            #[cfg(zcash_unstable = "nsm")]
             Nu7,
         ] {
             let height = network_upgrade.activation_height(network);

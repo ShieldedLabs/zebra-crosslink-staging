@@ -13,9 +13,4 @@ pub const SAPLING_VERSION_GROUP_ID: u32 = 0x892F_2085;
 pub const TX_V5_VERSION_GROUP_ID: u32 = 0x26A7_270A;
 
 // TODO: Change this
-pub const TX_V6_VERSION_GROUP_ID: u32 = zcash_primitives::transaction::ZFUTURE_VERSION_GROUP_ID;
-
-/// The version group ID for version ZFUTURE transactions.
-#[cfg(zcash_unstable = "nsm")]
-pub const TX_ZFUTURE_VERSION_GROUP_ID: u32 =
-    zcash_primitives::transaction::ZFUTURE_VERSION_GROUP_ID;
+pub const TX_V6_VERSION_GROUP_ID: u32 = 0xFFFFFFFF;

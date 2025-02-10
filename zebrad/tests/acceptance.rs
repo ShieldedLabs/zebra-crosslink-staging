@@ -3458,7 +3458,6 @@ async fn nu6_funding_streams_and_coinbase_balance() -> Result<()> {
         history_tree.clone(),
         true,
         vec![],
-        #[cfg(zcash_unstable = "nsm")]
         None,
     );
 
@@ -3503,7 +3502,6 @@ async fn nu6_funding_streams_and_coinbase_balance() -> Result<()> {
         history_tree.clone(),
         true,
         vec![],
-        #[cfg(zcash_unstable = "nsm")]
         None,
     );
 

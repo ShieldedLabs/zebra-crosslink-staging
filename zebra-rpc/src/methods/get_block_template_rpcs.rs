@@ -885,7 +885,6 @@ where
             "selecting transactions for the template from the mempool"
         );
 
-        #[cfg(zcash_unstable = "nsm")]
         let zip233_amount = if let Some(params) = parameters {
             params.zip233_amount
         } else {
@@ -901,7 +900,6 @@ where
             mempool_tx_deps,
             debug_like_zcashd,
             extra_coinbase_data.clone(),
-            #[cfg(zcash_unstable = "nsm")]
             zip233_amount,
         );
 
@@ -924,7 +922,6 @@ where
             submit_old,
             debug_like_zcashd,
             extra_coinbase_data,
-            #[cfg(zcash_unstable = "nsm")]
             zip233_amount,
         );
 
@@ -1386,9 +1383,6 @@ where
         }
 
         let mut block_hashes = Vec::new();
-        #[cfg(not(zcash_unstable = "nsm"))]
-        let params = None;
-        #[cfg(zcash_unstable = "nsm")]
         let params = Some(get_block_template::JsonParameters {
             zip233_amount,
             ..Default::default()

@@ -38,7 +38,6 @@ fn excludes_tx_with_unselected_dependencies() {
             mempool_tx_deps,
             like_zcashd,
             extra_coinbase_data,
-            #[cfg(zcash_unstable = "nsm")]
             None,
         ),
         vec![],
@@ -86,7 +85,6 @@ fn includes_tx_with_selected_dependencies() {
         mempool_tx_deps.clone(),
         like_zcashd,
         extra_coinbase_data,
-        #[cfg(zcash_unstable = "nsm")]
         None,
     );
 
