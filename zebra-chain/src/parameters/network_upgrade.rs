@@ -444,7 +444,9 @@ impl NetworkUpgrade {
     pub fn target_spacing(&self) -> Duration {
         let spacing_seconds = match self {
             Genesis | BeforeOverwinter | Overwinter | Sapling => PRE_BLOSSOM_POW_TARGET_SPACING,
-            Blossom | Heartwood | Canopy | Nu5 | Nu6 | Nu7 => POST_BLOSSOM_POW_TARGET_SPACING.into(),
+            Blossom | Heartwood | Canopy | Nu5 | Nu6 | Nu7 => {
+                POST_BLOSSOM_POW_TARGET_SPACING.into()
+            }
         };
 
         Duration::seconds(spacing_seconds)
@@ -564,8 +566,6 @@ impl From<zcash_protocol::consensus::NetworkUpgrade> for NetworkUpgrade {
             zcash_protocol::consensus::NetworkUpgrade::Nu5 => Self::Nu5,
             zcash_protocol::consensus::NetworkUpgrade::Nu6 => Self::Nu6,
             zcash_protocol::consensus::NetworkUpgrade::Nu7 => Self::Nu7,
-            #[cfg(zcash_unstable = "zfuture")]
-            zcash_protocol::consensus::NetworkUpgrade::ZFuture => Self::Nu7,
         }
     }
 }

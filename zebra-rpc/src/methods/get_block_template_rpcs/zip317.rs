@@ -53,6 +53,7 @@ type SelectedMempoolTx = VerifiedUnminedTx;
 /// Returns selected transactions from `mempool_txs`.
 ///
 /// [ZIP-317]: https://zips.z.cash/zip-0317#block-production
+#[allow(clippy::too_many_arguments)]
 pub fn select_mempool_transactions(
     network: &Network,
     next_block_height: Height,

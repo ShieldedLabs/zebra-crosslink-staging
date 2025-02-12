@@ -276,8 +276,7 @@ impl Transaction {
             | Transaction::V2 { .. }
             | Transaction::V3 { .. }
             | Transaction::V4 { .. } => None,
-            Transaction::V5 { .. }
-            | Transaction::V6 { .. } => Some(AuthDigest::from(self)),
+            Transaction::V5 { .. } | Transaction::V6 { .. } => Some(AuthDigest::from(self)),
         }
     }
 
@@ -316,6 +315,7 @@ impl Transaction {
                     .contains(orchard::Flags::ENABLE_SPENDS))
     }
 
+    /// Does this transaction have zip233_amount output?
     pub fn has_zip233_amount(&self) -> bool {
         self.zip233_amount() > Amount::<NonNegative>::zero()
     }
@@ -369,7 +369,9 @@ impl Transaction {
     pub fn is_overwintered(&self) -> bool {
         match self {
             Transaction::V1 { .. } | Transaction::V2 { .. } => false,
-            Transaction::V3 { .. } | Transaction::V4 { .. } | Transaction::V5 { .. }
+            Transaction::V3 { .. }
+            | Transaction::V4 { .. }
+            | Transaction::V5 { .. }
             | Transaction::V6 { .. } => true,
         }
     }

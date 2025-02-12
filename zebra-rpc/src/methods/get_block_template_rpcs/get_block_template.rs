@@ -332,14 +332,8 @@ pub fn generate_coinbase_transaction(
     let outputs = standard_coinbase_outputs(network, height, miner_address, miner_fee, like_zcashd);
 
     if like_zcashd {
-        Transaction::new_v4_coinbase(
-            network,
-            height,
-            outputs,
-            like_zcashd,
-            extra_coinbase_data,
-        )
-        .into()
+        Transaction::new_v4_coinbase(network, height, outputs, like_zcashd, extra_coinbase_data)
+            .into()
     } else {
         let network_upgrade = NetworkUpgrade::current(network, height);
         if network_upgrade < NetworkUpgrade::Nu7 {

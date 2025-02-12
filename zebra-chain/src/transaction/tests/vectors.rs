@@ -917,8 +917,8 @@ fn binding_signatures() {
                         }
                     }
                     Transaction::V6 {
-                        sapling_shielded_data, 
-                        .. 
+                        sapling_shielded_data,
+                        ..
                     } => {
                         if let Some(sapling_shielded_data) = sapling_shielded_data {
                             // V5 txs have the outputs spent by their transparent inputs hashed into

@@ -11,7 +11,10 @@ use reddsa::{orchard::Binding, orchard::SpendAuth, Signature};
 use crate::{
     amount,
     block::MAX_BLOCK_BYTES,
-    parameters::{OVERWINTER_VERSION_GROUP_ID, SAPLING_VERSION_GROUP_ID, TX_V5_VERSION_GROUP_ID, TX_V6_VERSION_GROUP_ID},
+    parameters::{
+        OVERWINTER_VERSION_GROUP_ID, SAPLING_VERSION_GROUP_ID, TX_V5_VERSION_GROUP_ID,
+        TX_V6_VERSION_GROUP_ID,
+    },
     primitives::{Halo2Proof, ZkSnarkProof},
     serialization::{
         zcash_deserialize_external_count, zcash_serialize_empty_list,
@@ -974,9 +977,7 @@ impl ZcashDeserialize for Transaction {
                 // Denoted as `nVersionGroupId` in the spec.
                 let id = limited_reader.read_u32::<LittleEndian>()?;
                 if id != TX_V6_VERSION_GROUP_ID {
-                    return Err(SerializationError::Parse(
-                        "expected TX_V6_VERSION_GROUP_ID",
-                    ));
+                    return Err(SerializationError::Parse("expected TX_V6_VERSION_GROUP_ID"));
                 }
                 // Denoted as `nConsensusBranchId` in the spec.
                 // Convert it to a NetworkUpgrade

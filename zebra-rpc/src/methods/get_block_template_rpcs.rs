@@ -298,7 +298,11 @@ pub trait GetBlockTemplateRpc {
     /// zcashd reference: [`generate`](https://zcash.github.io/rpc/generate.html)
     /// method: post
     /// tags: generating
-    async fn generate(&self, num_blocks: u32,  zip233_amount: Option<Amount<NonNegative>>) -> Result<Vec<GetBlockHash>>;
+    async fn generate(
+        &self,
+        num_blocks: u32,
+        zip233_amount: Option<Amount<NonNegative>>,
+    ) -> Result<Vec<GetBlockHash>>;
 }
 
 /// RPC method implementations.
@@ -1363,7 +1367,11 @@ where
         ))
     }
 
-    async fn generate(&self, num_blocks: u32, zip233_amount: Option<Amount<NonNegative>>) -> Result<Vec<GetBlockHash>> {
+    async fn generate(
+        &self,
+        num_blocks: u32,
+        zip233_amount: Option<Amount<NonNegative>>,
+    ) -> Result<Vec<GetBlockHash>> {
         let rpc: GetBlockTemplateRpcImpl<
             Mempool,
             State,

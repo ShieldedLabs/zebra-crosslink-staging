@@ -206,6 +206,7 @@ pub struct ConfiguredActivationHeights {
     /// Activation height for `NU6` network upgrade.
     #[serde(rename = "NU6")]
     pub nu6: Option<u32>,
+    /// Activation height for `NU7` network upgrade.
     #[serde(rename = "NU7")]
     pub nu7: Option<u32>,
 }
@@ -618,7 +619,9 @@ impl Parameters {
     ) -> Self {
         #[cfg(any(test, feature = "proptest-impl"))]
         let nu5_activation_height = nu5_activation_height.or(Some(100));
-        let nu7_activation_height = nu6_activation_height.or(nu5_activation_height).map(|h| h + 1);
+        let nu7_activation_height = nu6_activation_height
+            .or(nu5_activation_height)
+            .map(|h| h + 1);
 
         let parameters = Self::build()
             .with_genesis_hash(REGTEST_GENESIS_HASH)

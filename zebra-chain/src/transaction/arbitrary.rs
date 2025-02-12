@@ -933,7 +933,7 @@ pub fn transaction_to_fake_v5(
             expiry_height: height,
             sapling_shielded_data: sapling_shielded_data.clone(),
             orchard_shielded_data: orchard_shielded_data.clone(),
-        }
+        },
     }
 }
 
