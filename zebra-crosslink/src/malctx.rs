@@ -31,16 +31,16 @@ use malachitebft_sync::PeerId;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StreamedProposalData {
-    pub factor: u64,
+    pub factor: char,
 }
 
 impl StreamedProposalData {
-    pub fn new(factor: u64) -> Self {
+    pub fn new(factor: char) -> Self {
         Self { factor }
     }
 
     pub fn size_bytes(&self) -> usize {
-        std::mem::size_of::<u64>()
+        std::mem::size_of::<Self>()
     }
 }
 
@@ -157,7 +157,7 @@ impl Protobuf for StreamedProposalPart {
                     .ok_or_else(|| ProtoError::missing_field::<Self::Proto>("proposer"))
                     .and_then(Address::from_proto)?,
             })),
-            Part::Data(data) => Ok(Self::Data(StreamedProposalData::new(data.factor))),
+            Part::Data(data) => Ok(Self::Data(StreamedProposalData::new(char::from_u32(data.factor as u32).unwrap()))),
             Part::Fin(fin) => Ok(Self::Fin(StreamedProposalFin {
                 signature: fin
                     .signature
@@ -182,7 +182,7 @@ impl Protobuf for StreamedProposalPart {
             }),
             Self::Data(data) => Ok(Self::Proto {
                 part: Some(Part::Data(proto::StreamedProposalData {
-                    factor: data.factor,
+                    factor: data.factor as u64,
                 })),
             }),
             Self::Fin(fin) => Ok(Self::Proto {
@@ -393,12 +393,12 @@ impl Protobuf for ValueId {
 /// The value to decide on
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Value {
-    pub value: u64,
+    pub value: String,
     pub extensions: Bytes,
 }
 
 impl Value {
-    pub fn new(value: u64) -> Self {
+    pub fn new(value: String) -> Self {
         Self {
             value,
             extensions: Bytes::new(),
@@ -406,7 +406,13 @@ impl Value {
     }
 
     pub fn id(&self) -> ValueId {
-        ValueId(self.value)
+        let mut dumb_hash : u64 = 0;
+        for c in self.value.chars() {
+            dumb_hash += c as u64;
+            dumb_hash = dumb_hash >> 1 | dumb_hash << 63;
+        }
+        dumb_hash += self.value.len() as u64;
+        ValueId(dumb_hash)
     }
 
     pub fn size_bytes(&self) -> usize {
@@ -431,25 +437,33 @@ impl Protobuf for Value {
             .value
             .ok_or_else(|| ProtoError::missing_field::<Self::Proto>("value"))?;
 
-        let value = bytes[0..8].try_into().map_err(|_| {
-            ProtoError::Other(format!(
-                "Too few bytes, expected at least {}",
-                u64::BITS / 8
-            ))
-        })?;
+        let len : usize = *bytes.get(0).ok_or(ProtoError::Other(format!(
+                "Too few bytes, expected at least 1",
+            )))? as usize;
 
-        let extensions = bytes.slice(8..);
+        let string_utf8 = bytes.slice(1..1+len);
+        let extensions = bytes.slice(1+len..);
 
         Ok(Value {
-            value: u64::from_be_bytes(value),
+            value: String::from_utf8((&string_utf8).to_vec()).map_err(|error| ProtoError::Other(format!(
+                "Not a string! {:?}",
+                error
+            )))?,
             extensions,
         })
     }
 
     #[cfg_attr(coverage_nightly, coverage(off))]
     fn to_proto(&self) -> Result<Self::Proto, ProtoError> {
+        use bytes::BufMut;
         let mut bytes = BytesMut::new();
-        bytes.extend_from_slice(&self.value.to_be_bytes());
+        if self.value.len() > 255 {
+            return Err(ProtoError::Other(format!(
+                "String too long!, {} > 255", self.value.len()
+            )));
+        }
+        bytes.put_u8(self.value.len() as u8);
+        bytes.extend_from_slice(&self.value.as_bytes());
         bytes.extend_from_slice(&self.extensions);
 
         Ok(proto::Value {
