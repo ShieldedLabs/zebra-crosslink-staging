@@ -126,17 +126,23 @@ proptest! {
             );
 
             let old_last_change_hash = chain_tip_change.last_change_hash;
+            let old_last_change_height = chain_tip_change.last_change_height;
 
             let new_action = expected_tip.and_then(|(chain_tip, block)| {
                 if Some(chain_tip.hash) == old_last_change_hash {
                     // some updates don't do anything, so there's no new action
                     None
-                } else if Some(chain_tip.previous_block_hash) != old_last_change_hash
-                    || NetworkUpgrade::is_activation_height(&network, chain_tip.height)
-                {
-                    Some(TipAction::reset_with(block.0.into()))
                 } else {
-                    Some(TipAction::grow_with(block.0.into()))
+                    let is_activation = NetworkUpgrade::is_activation_height(&network, chain_tip.height);
+                    let is_parent = Some(chain_tip.previous_block_hash) == old_last_change_hash;
+                    let is_sequential = old_last_change_height.map_or(false, |h| chain_tip.height == h + 1);
+
+                    if is_parent && is_sequential && !is_activation {
+                        Some(TipAction::grow_with(block.0.into()))
+                    } else {
+                        let rollback = !is_parent && old_last_change_height.map_or(false, |h| chain_tip.height <= h + 1);
+                        Some(TipAction::reset_with_reason(block.0.into(), rollback))
+                    }
                 }
             });
 
