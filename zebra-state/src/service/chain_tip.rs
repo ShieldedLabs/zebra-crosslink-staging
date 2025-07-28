@@ -594,17 +594,17 @@ impl ChainTipChange {
         // So we must perform the same actions for network upgrades and skipped blocks.
         let is_activation = NetworkUpgrade::is_activation_height(&self.network, block.height);
         let is_parent = Some(block.previous_block_hash) == self.last_change_hash;
-        let is_sequential = self
-            .last_change_height
-            .map_or(false, |h| block.height == h + 1);
+        let is_sequential = self.last_change_height.map_or(false, |h| {
+            block.height == (h + 1).expect("heights are valid")
+        });
 
         if is_parent && is_sequential && !is_activation {
             TipAction::grow_with(block)
         } else {
             let rollback = !is_parent
-                && self
-                    .last_change_height
-                    .map_or(false, |h| block.height <= h + 1);
+                && self.last_change_height.map_or(false, |h| {
+                    block.height <= (h + 1).expect("heights are valid")
+                });
             TipAction::reset_with_reason(block, rollback)
         }
     }
