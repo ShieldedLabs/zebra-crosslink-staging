@@ -605,6 +605,15 @@ impl ChainTipChange {
                 && self.last_change_height.map_or(false, |h| {
                     block.height <= (h + 1).expect("heights are valid")
                 });
+            tracing::debug!(
+                ?block.height,
+                ?block.hash,
+                ?is_activation,
+                ?is_parent,
+                ?is_sequential,
+                ?rollback,
+                "detected chain tip reset"
+            );
             TipAction::reset_with_reason(block, rollback)
         }
     }
