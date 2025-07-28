@@ -710,7 +710,7 @@ impl TipAction {
     pub fn best_tip_hash_and_height(&self) -> (block::Hash, block::Height) {
         match self {
             Grow { block } => (block.hash, block.height),
-            Reset { hash, height } => (*hash, *height),
+            Reset { hash, height, .. } => (*hash, *height),
         }
     }
 
