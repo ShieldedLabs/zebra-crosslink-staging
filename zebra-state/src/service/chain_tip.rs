@@ -439,6 +439,11 @@ pub struct ChainTipChange {
     /// this hash will be different to the last returned `ChainTipBlock.hash`.
     last_change_hash: Option<block::Hash>,
 
+    /// The most recent [`block::Height`] provided by this instance.
+    ///
+    /// Used together with `last_change_hash` to detect rollbacks.
+    last_change_height: Option<block::Height>,
+
     /// The network for the chain tip.
     network: Network,
 }
@@ -479,6 +484,9 @@ pub enum TipAction {
         ///
         /// Mainly useful for logging and debugging.
         hash: block::Hash,
+
+        /// Was this reset definitely caused by a rollback?
+        rollback: bool,
     },
 }
 
@@ -512,6 +520,7 @@ impl ChainTipChange {
         let action = self.action(block.clone());
 
         self.last_change_hash = Some(block.hash);
+        self.last_change_height = Some(block.height);
 
         Ok(action)
     }
@@ -538,9 +547,11 @@ impl ChainTipChange {
         })??;
 
         let block_hash = block.hash;
+        let block_height = block.height;
         let tip_action = self.action(block);
 
         self.last_change_hash = Some(block_hash);
+        self.last_change_height = Some(block_height);
 
         Some(tip_action)
     }
@@ -581,12 +592,20 @@ impl ChainTipChange {
         // Skipped blocks can include network upgrade activation blocks.
         // Fork changes can activate or deactivate a network upgrade.
         // So we must perform the same actions for network upgrades and skipped blocks.
-        if Some(block.previous_block_hash) != self.last_change_hash
-            || NetworkUpgrade::is_activation_height(&self.network, block.height)
-        {
-            TipAction::reset_with(block)
-        } else {
+        let is_activation = NetworkUpgrade::is_activation_height(&self.network, block.height);
+        let is_parent = Some(block.previous_block_hash) == self.last_change_hash;
+        let is_sequential = self
+            .last_change_height
+            .map_or(false, |h| block.height == h + 1);
+
+        if is_parent && is_sequential && !is_activation {
             TipAction::grow_with(block)
+        } else {
+            let rollback = !is_parent
+                && self
+                    .last_change_height
+                    .map_or(false, |h| block.height <= h + 1);
+            TipAction::reset_with_reason(block, rollback)
         }
     }
 
@@ -595,6 +614,7 @@ impl ChainTipChange {
         Self {
             latest_chain_tip,
             last_change_hash: None,
+            last_change_height: None,
             network: network.clone(),
         }
     }
@@ -649,6 +669,7 @@ impl Clone for ChainTipChange {
 
             // clear the previous change hash, so the first action is a reset
             last_change_hash: None,
+            last_change_height: None,
 
             network: self.network.clone(),
         }
@@ -659,6 +680,11 @@ impl TipAction {
     /// Is this tip action a [`Reset`]?
     pub fn is_reset(&self) -> bool {
         matches!(self, Reset { .. })
+    }
+
+    /// Was this reset definitely caused by a rollback?
+    pub fn is_rollback(&self) -> bool {
+        matches!(self, Reset { rollback: true, .. })
     }
 
     /// Returns the block hash of this tip action,
@@ -695,9 +721,15 @@ impl TipAction {
 
     /// Returns a [`Reset`] based on `block`.
     pub(crate) fn reset_with(block: ChainTipBlock) -> Self {
+        Self::reset_with_reason(block, false)
+    }
+
+    /// Returns a [`Reset`] based on `block` and whether it was a rollback.
+    pub(crate) fn reset_with_reason(block: ChainTipBlock, rollback: bool) -> Self {
         Reset {
             height: block.height,
             hash: block.hash,
+            rollback,
         }
     }
 
@@ -710,6 +742,7 @@ impl TipAction {
             Grow { block } => Reset {
                 height: block.height,
                 hash: block.hash,
+                rollback: false,
             },
             reset @ Reset { .. } => reset,
         }
