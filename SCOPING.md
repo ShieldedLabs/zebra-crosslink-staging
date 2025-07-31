@@ -33,9 +33,11 @@ This list of [UX Goals](https://github.com/ShieldedLabs/zebra-crosslink/labels/U
 * [GH #131](https://github.com/ShieldedLabs/zebra-crosslink/issues/131): CEXes are willing to rely on incoming Zcash transaction finality. E.g. Coinbase re-enables market orders and reduces required confirmations to a nice small number like 10. All or most services rely on the same canonical (protocol-provided) finality instead of enforcing [their own additional delays or conditions](https://zechub.wiki/using-zcash/custodial-exchanges), and so the user experience is that transaction finality is predictable and recognizable across services.
 * [GH #128](https://github.com/ShieldedLabs/zebra-crosslink/issues/128): Other services that require finality, such as cross-chain bridges, are willing to rely on Zcash’s finality.
 * [GH #127](https://github.com/ShieldedLabs/zebra-crosslink/issues/127): Casual users (who understand little about crypto and do not use specialized tools such as a Linux user interface) delegate ZEC and get rewards from their mobile wallet. [GH #124](https://github.com/ShieldedLabs/zebra-crosslink/issues/124) They have to learn a minimal set of new concepts in order to do this.
-* [GH #126](https://github.com/ShieldedLabs/zebra-crosslink/issues/126) Users (who have to understand a lot and can use specialized tools) run finalizers and get rewards.
+* [GH #126](https://github.com/ShieldedLabs/zebra-crosslink/issues/126): Users (who have to understand a lot and can use specialized tools) run finalizers and get rewards.
+* [GH #158](https://github.com/ShieldedLabs/zebra-crosslink/issues/158): Users can get compounding returns by leaving their stake plus their rewards staked, without them or their wallet having to take action.
 
-_Shielded Labs’s First Deployment of Crosslink is not done until substantial numbers of real users are actually gaining these five benefits._
+
+_Shielded Labs’s First Deployment of Crosslink is not done until substantial numbers of real users are actually gaining these six benefits._
 
 Deployment Goals
 ---
