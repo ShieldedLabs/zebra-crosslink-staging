@@ -63,7 +63,7 @@ where
 
     loop {
         let mut sync_status = sync_status.clone();
-        let mut chain_tip = chain_state.clone();
+        let mut chain_tip = chain_state.clone_with_tip();
         let tip_change_close_to_network_tip_fut = async move {
             // wait for at least one tip change, to make sure we have a new block hash to broadcast
             let tip_action = chain_tip.wait_for_tip_change().await.map_err(TipChange)?;
