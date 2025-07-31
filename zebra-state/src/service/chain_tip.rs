@@ -669,6 +669,22 @@ impl ChainTipChange {
     pub fn latest_chain_tip(&self) -> LatestChainTip {
         self.latest_chain_tip.clone()
     }
+
+    /// Clone this [`ChainTipChange`], keeping the last observed tip.
+    ///
+    /// The standard [`Clone`] implementation resets the tip tracking so the
+    /// first call to [`wait_for_tip_change`](Self::wait_for_tip_change) returns a
+    /// [`Reset`]. This helper preserves `last_change_hash` and
+    /// `last_change_height` so clones continue tracking the chain without a
+    /// spurious reset.
+    pub fn clone_with_tip(&self) -> Self {
+        Self {
+            latest_chain_tip: self.latest_chain_tip.clone(),
+            last_change_hash: self.last_change_hash,
+            last_change_height: self.last_change_height,
+            network: self.network.clone(),
+        }
+    }
 }
 
 impl Clone for ChainTipChange {
