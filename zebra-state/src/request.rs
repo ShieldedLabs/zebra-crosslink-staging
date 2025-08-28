@@ -702,6 +702,12 @@ pub enum Request {
     /// documentation for details.
     CommitCheckpointVerifiedBlock(CheckpointVerifiedBlock),
 
+    /// Communicate the hash that Crosslink has finalized so that PoW can account for it.
+    ///
+    /// * [`Response::Depth(Some(depth))`](Response::Depth) if the block is in the best chain;
+    /// * [`Response::Depth(None)`](Response::Depth) otherwise.
+    CrosslinkFinalizeBlock(block::Hash),
+
     /// Computes the depth in the current best chain of the block identified by the given hash.
     ///
     /// Returns
@@ -878,6 +884,7 @@ impl Request {
         match self {
             Request::CommitSemanticallyVerifiedBlock(_) => "commit_semantically_verified_block",
             Request::CommitCheckpointVerifiedBlock(_) => "commit_checkpoint_verified_block",
+            Request::CrosslinkFinalizeBlock(_) => "crosslink_finalize_block",
 
             Request::AwaitUtxo(_) => "await_utxo",
             Request::Depth(_) => "depth",
@@ -1288,7 +1295,8 @@ impl TryFrom<Request> for ReadRequest {
             Request::CommitSemanticallyVerifiedBlock(_)
             | Request::CommitCheckpointVerifiedBlock(_)
             | Request::InvalidateBlock(_)
-            | Request::ReconsiderBlock(_) => Err("ReadService does not write blocks"),
+            | Request::ReconsiderBlock(_)
+            | Request::CrosslinkFinalizeBlock(_) => Err("ReadService does not write blocks"),
 
             Request::AwaitUtxo(_) => Err("ReadService does not track pending UTXOs. \
                      Manually convert the request to ReadRequest::AnyChainUtxo, \

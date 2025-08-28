@@ -34,7 +34,7 @@ use crate::{
         non_finalized_state::{Chain, NonFinalizedState},
         read::{self, block::block_header, FINALIZED_STATE_QUERY_RETRIES},
     },
-    BoxError, KnownBlock,
+    BoxError, KnownBlock, KnownBlockLocation,
 };
 
 #[cfg(test)]
@@ -147,19 +147,37 @@ pub fn non_finalized_state_contains_block_hash(
     let is_hash_in_chain = |chain: &Arc<Chain>| chain.contains_block_hash(hash);
 
     // Equivalent to `chain_set.iter().next_back()` in `NonFinalizedState.best_chain()` method.
-    let best_chain = chains_iter.next();
-
-    match best_chain.map(is_hash_in_chain) {
-        Some(true) => Some(KnownBlock::BestChain),
-        Some(false) if chains_iter.any(is_hash_in_chain) => Some(KnownBlock::SideChain),
-        Some(false) | None => None,
+    if let Some(best_chain) = chains_iter.next() {
+        if let Some(height) = best_chain.height_by_hash(hash) {
+            return Some(KnownBlock {
+                location: KnownBlockLocation::BestChain,
+                height,
+            });
+        } else {
+            for side_chain in chains_iter {
+                if let Some(height) = side_chain.height_by_hash(hash) {
+                    return Some(KnownBlock {
+                        location: KnownBlockLocation::SideChain,
+                        height,
+                    });
+                }
+            }
+        }
     }
+    return None;
 }
 
 /// Returns the location of the block if present in the finalized state.
 /// Returns None if the block hash is not found in the finalized state.
 pub fn finalized_state_contains_block_hash(db: &ZebraDb, hash: block::Hash) -> Option<KnownBlock> {
-    db.contains_hash(hash).then_some(KnownBlock::BestChain)
+    if let Some(height) = db.height(hash) {
+        Some(KnownBlock {
+            location: KnownBlockLocation::BestChain,
+            height,
+        })
+    } else {
+        None
+    }
 }
 
 /// Return the height for the block at `hash`, if `hash` is in `chain` or `db`.

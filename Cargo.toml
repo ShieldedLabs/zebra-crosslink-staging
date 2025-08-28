@@ -1,3 +1,13 @@
+# Common crate metadata:
+[workspace.package]
+authors = ["Zcash Foundation <zebra@zfnd.org>"]
+edition = "2021"
+homepage = "https://zfnd.org/zebra/"
+keywords = ["zebra", "zcash"]
+license = "MIT OR Apache-2.0"
+readme = "../README.md"
+repository = "https://github.com/ZcashFoundation/zebra"
+
 [workspace]
 members = [
         "zebrad",
@@ -10,8 +20,9 @@ members = [
         "zebra-node-services",
         "zebra-test",
         "zebra-utils",
+        "zebra-crosslink",
         "tower-batch-control",
-        "tower-fallback",
+        "tower-fallback", "zebra-crosslink"
 ]
 
 # Use the edition 2021 dependency resolver in the workspace, to match the crates
@@ -107,11 +118,11 @@ rand_core = "0.6"
 rayon = "1.10"
 reddsa = "0.5"
 redjubjub = "0.8"
-regex = "1.11"
-reqwest = { version = "0.12", default-features = false }
-ripemd = "0.1"
-rlimit = "0.10"
-rocksdb = { version = "0.22", default-features = false }
+regex = "1.11.0"
+reqwest = { version = "0.12.15", default-features = false }
+ripemd = "0.1.3"
+rlimit = "0.10.2"
+rocksdb = { version = "0.23.0", default-features = false, features = ["bindgen-runtime"] }
 secp256k1 = "0.29"
 semver = "1.0.26"
 sentry = { version = "0.40", default-features = false }

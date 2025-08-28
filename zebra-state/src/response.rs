@@ -46,6 +46,9 @@ pub enum Response {
     /// Response to [`Request::Depth`] with the depth of the specified block.
     Depth(Option<u32>),
 
+    /// Response to [`Request::CrosslinkFinalizeBlock`]
+    CrosslinkFinalized(block::Hash),
+
     /// Response to [`Request::Tip`] with the current best chain tip.
     //
     // TODO: remove this request, and replace it with a call to
@@ -56,7 +59,7 @@ pub enum Response {
     BlockLocator(Vec<block::Hash>),
 
     /// Response to [`Request::Transaction`] with the specified transaction.
-    Transaction(Option<Arc<Transaction>>),
+    Transaction(Option<MinedTx>),
 
     /// Response to [`Request::UnspentBestChainUtxo`] with the UTXO
     UnspentBestChainUtxo(Option<transparent::Utxo>),
@@ -110,7 +113,7 @@ pub enum Response {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// An enum of block stores in the state where a block hash could be found.
-pub enum KnownBlock {
+pub enum KnownBlockLocation {
     /// Block is in the best chain.
     BestChain,
 
@@ -119,6 +122,15 @@ pub enum KnownBlock {
 
     /// Block is queued to be validated and committed, or rejected and dropped.
     Queue,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct KnownBlock {
+    /// Where is the block located?
+    pub location: KnownBlockLocation,
+    // header: Arc<block::Header>,
+    /// What height in the given chain is it?
+    pub height: block::Height,
 }
 
 /// Information about a transaction in the best chain
@@ -466,7 +478,7 @@ impl TryFrom<ReadResponse> for Response {
                 next_block_hash
             }),
             ReadResponse::Transaction(tx_info) => {
-                Ok(Response::Transaction(tx_info.map(|tx_info| tx_info.tx)))
+                Ok(Response::Transaction(tx_info))
             }
             ReadResponse::UnspentBestChainUtxo(utxo) => Ok(Response::UnspentBestChainUtxo(utxo)),
 

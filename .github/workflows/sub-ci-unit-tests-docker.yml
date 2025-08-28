@@ -119,6 +119,28 @@ jobs:
     uses: ./.github/workflows/sub-test-zebra-config.yml
     with:
       docker_image: ${{ vars.GAR_BASE }}/${{ vars.CI_IMAGE_NAME }}@${{ inputs.image_digest }}
+      grep_patterns: '-e "net.*=.*Main.*estimated progress to chain tip.*BeforeOverwinter"'
+
+  # Test reconfiguring Zebra for Testnet in Docker.
+  test-configuration-file-testnet:
+    name: Test enabling Testnet in Docker
+    # Make sure Zebra can sync the genesis block on testnet
+    uses: ./.github/workflows/sub-test-zebra-config.yml
+    with:
+      test_id: "testnet-conf"
+      docker_image: ${{ vars.GAR_BASE }}/${{ vars.CI_IMAGE_NAME }}@${{ inputs.image_digest }}
+      test_variables: "-e NETWORK=Testnet"
+      grep_patterns: '-e "net.*=.*Test.*estimated progress to chain tip.*Genesis" -e "net.*=.*Test.*estimated progress to chain tip.*BeforeOverwinter"'
+
+  # Test that Zebra works using $ZEBRA_CONF_PATH config
+  test-zebra-conf-path:
+    name: Test CI custom Docker config file
+    uses: ./.github/workflows/sub-test-zebra-config.yml
+    with:
+      test_id: "custom-conf"
+      docker_image: ${{ vars.GAR_BASE }}/${{ vars.CI_IMAGE_NAME }}@${{ inputs.image_digest }}
+      test_variables: '-e ZEBRA_CONF_PATH="zebrad/tests/common/configs/custom-conf.toml"'
+      grep_patterns: '-e "extra_coinbase_data:\sSome\(\"do you even shield\?\"\)"'
 
   failure-issue:
     name: Open or update issues for main branch failures

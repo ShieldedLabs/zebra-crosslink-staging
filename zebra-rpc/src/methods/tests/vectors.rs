@@ -58,6 +58,7 @@ async fn rpc_getinfo() {
     let mut mempool: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
     let state: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
     let mut read_state: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
+    let tfl_service: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
 
     let (_tx, rx) = tokio::sync::watch::channel(None);
     let (rpc, rpc_tx_queue) = RpcImpl::new(
@@ -67,6 +68,7 @@ async fn rpc_getinfo() {
         "0.0.1",
         "RPC test",
         Buffer::new(mempool.clone(), 1),
+        Buffer::new(tfl_service.clone(), 1),
         Buffer::new(state.clone(), 1),
         Buffer::new(read_state.clone(), 1),
         MockService::build().for_unit_tests(),
@@ -203,6 +205,7 @@ async fn rpc_getblock() {
         .collect();
 
     let mut mempool: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
+    let tfl_service: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
     // Create a populated state service
     let (state, read_state, tip, _) = zebra_state::populated_state(blocks.clone(), &Mainnet).await;
 
@@ -215,6 +218,7 @@ async fn rpc_getblock() {
         "0.0.1",
         "RPC test",
         Buffer::new(mempool.clone(), 1),
+        Buffer::new(tfl_service.clone(), 1),
         Buffer::new(state.clone(), 1),
         Buffer::new(read_state.clone(), 1),
         MockService::build().for_unit_tests(),
@@ -716,6 +720,7 @@ async fn rpc_getblock_parse_error() {
     let _init_guard = zebra_test::init();
 
     let mut mempool: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
+    let tfl_service: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
     let state: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
     let mut read_state: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
 
@@ -728,6 +733,7 @@ async fn rpc_getblock_parse_error() {
         "0.0.1",
         "RPC test",
         Buffer::new(mempool.clone(), 1),
+        Buffer::new(tfl_service.clone(), 1),
         Buffer::new(state.clone(), 1),
         Buffer::new(read_state.clone(), 1),
         MockService::build().for_unit_tests(),
@@ -767,7 +773,9 @@ async fn rpc_getblock_missing_error() {
     let _init_guard = zebra_test::init();
 
     let mut mempool: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
-    let state: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
+    let mut state: MockService<zebra_state::Request, zebra_state::Response, _, BoxError> =
+        MockService::build().for_unit_tests();
+    let tfl_service: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
     let mut read_state: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
 
     let (_tx, rx) = tokio::sync::watch::channel(None);
@@ -778,6 +786,7 @@ async fn rpc_getblock_missing_error() {
         "0.0.1",
         "RPC test",
         Buffer::new(mempool.clone(), 1),
+        Buffer::new(tfl_service.clone(), 1),
         Buffer::new(state.clone(), 1),
         Buffer::new(read_state.clone(), 1),
         MockService::build().for_unit_tests(),
@@ -834,6 +843,8 @@ async fn rpc_getblockheader() {
         .collect();
 
     let mut mempool: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
+    let tfl_service: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
+    let (_, read_state, tip, _) = zebra_state::populated_state(blocks.clone(), &Mainnet).await;
     let (state, read_state, tip, _) = zebra_state::populated_state(blocks.clone(), &Mainnet).await;
 
     // Init RPC
@@ -845,6 +856,7 @@ async fn rpc_getblockheader() {
         "0.0.1",
         "RPC test",
         Buffer::new(mempool.clone(), 1),
+        Buffer::new(tfl_service.clone(), 1),
         Buffer::new(state.clone(), 1),
         Buffer::new(read_state.clone(), 1),
         MockService::build().for_unit_tests(),
@@ -966,6 +978,7 @@ async fn rpc_getbestblockhash() {
 
     // Get a mempool handle
     let mut mempool: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
+    let tfl_service: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
     // Create a populated state service, the tip will be in `NUMBER_OF_BLOCKS`.
     let (state, read_state, tip, _) = zebra_state::populated_state(blocks.clone(), &Mainnet).await;
 
@@ -978,6 +991,7 @@ async fn rpc_getbestblockhash() {
         "0.0.1",
         "RPC test",
         Buffer::new(mempool.clone(), 1),
+        Buffer::new(tfl_service.clone(), 1),
         Buffer::new(state.clone(), 1),
         Buffer::new(read_state.clone(), 1),
         MockService::build().for_unit_tests(),
@@ -1015,6 +1029,7 @@ async fn rpc_getrawtransaction() {
         .collect();
 
     let mut mempool: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
+    let tfl_service: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
     let (state, read_state, _, _) = zebra_state::populated_state(blocks.clone(), &Mainnet).await;
 
     let (tip, tip_sender) = MockChainTip::new();
@@ -1029,6 +1044,7 @@ async fn rpc_getrawtransaction() {
         "0.0.1",
         "RPC test",
         Buffer::new(mempool.clone(), 1),
+        Buffer::new(tfl_service.clone(), 1),
         Buffer::new(state.clone(), 1),
         Buffer::new(read_state.clone(), 1),
         MockService::build().for_unit_tests(),
@@ -1198,6 +1214,7 @@ async fn rpc_getaddresstxids_invalid_arguments() {
     let _init_guard = zebra_test::init();
 
     let mut mempool: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
+    let tfl_service: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
 
     // Create a continuous chain of mainnet blocks from genesis
     let blocks: Vec<Arc<Block>> = zebra_test::vectors::CONTINUOUS_MAINNET_BLOCKS
@@ -1216,6 +1233,7 @@ async fn rpc_getaddresstxids_invalid_arguments() {
         "0.0.1",
         "RPC test",
         Buffer::new(mempool.clone(), 1),
+        Buffer::new(tfl_service.clone(), 1),
         Buffer::new(state.clone(), 1),
         Buffer::new(read_state.clone(), 1),
         MockService::build().for_unit_tests(),
@@ -1396,6 +1414,7 @@ async fn rpc_getaddresstxids_response_with(
     expected_response_len: usize,
 ) {
     let mut mempool: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
+    let tfl_service: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
     let state: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
 
     let (_tx, rx) = tokio::sync::watch::channel(None);
@@ -1406,6 +1425,7 @@ async fn rpc_getaddresstxids_response_with(
         "0.0.1",
         "RPC test",
         Buffer::new(mempool.clone(), 1),
+        Buffer::new(tfl_service.clone(), 1),
         state,
         Buffer::new(read_state.clone(), 1),
         MockService::build().for_unit_tests(),
@@ -1457,6 +1477,7 @@ async fn rpc_getaddressutxos_invalid_arguments() {
     let mut mempool: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
     let state: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
     let mut read_state: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
+    let tfl_service: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
 
     let (_tx, rx) = tokio::sync::watch::channel(None);
     let (rpc, _) = RpcImpl::new(
@@ -1466,6 +1487,7 @@ async fn rpc_getaddressutxos_invalid_arguments() {
         "0.0.1",
         "RPC test",
         Buffer::new(mempool.clone(), 1),
+        Buffer::new(tfl_service.clone(), 1),
         Buffer::new(state, 1),
         Buffer::new(read_state.clone(), 1),
         MockService::build().for_unit_tests(),
@@ -1505,6 +1527,7 @@ async fn rpc_getaddressutxos_response() {
         .unwrap();
 
     let mut mempool: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
+    let tfl_service: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
     // Create a populated state service
     let (state, read_state, tip, _) = zebra_state::populated_state(blocks.clone(), &Mainnet).await;
 
@@ -1516,6 +1539,7 @@ async fn rpc_getaddressutxos_response() {
         "0.0.1",
         "RPC test",
         Buffer::new(mempool.clone(), 1),
+        Buffer::new(tfl_service.clone(), 1),
         state.clone(),
         Buffer::new(read_state.clone(), 1),
         MockService::build().for_unit_tests(),
@@ -1566,6 +1590,8 @@ async fn rpc_getblockcount() {
     )
     .await;
 
+    let tfl_service: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
+
     // Init RPC
     let (_tx, rx) = tokio::sync::watch::channel(None);
     let (rpc, _) = RpcImpl::new(
@@ -1575,6 +1601,7 @@ async fn rpc_getblockcount() {
         "0.0.1",
         "RPC test",
         Buffer::new(mempool.clone(), 1),
+        Buffer::new(tfl_service.clone(), 1),
         state.clone(),
         Buffer::new(read_state.clone(), 1),
         block_verifier_router,
@@ -1610,6 +1637,8 @@ async fn rpc_getblockcount_empty_state() {
     )
     .await;
 
+    let tfl_service: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
+
     // Init RPC
     let (_tx, rx) = tokio::sync::watch::channel(None);
     let (rpc, _) = RpcImpl::new(
@@ -1619,6 +1648,7 @@ async fn rpc_getblockcount_empty_state() {
         "0.0.1",
         "RPC test",
         Buffer::new(mempool.clone(), 1),
+        Buffer::new(tfl_service.clone(), 1),
         state.clone(),
         Buffer::new(read_state.clone(), 1),
         block_verifier_router,
@@ -1650,6 +1680,7 @@ async fn rpc_getpeerinfo() {
     let network = Mainnet;
 
     let mut mempool: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
+    let tfl_service: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
     let (state, read_state, tip, _) = zebra_state::init_test_services(&Mainnet);
 
     let (block_verifier_router, _, _, _) = zebra_consensus::router::init_test(
@@ -1717,6 +1748,7 @@ async fn rpc_getpeerinfo() {
         "0.0.1",
         "RPC test",
         Buffer::new(mempool.clone(), 1),
+        Buffer::new(tfl_service.clone(), 1),
         state.clone(),
         Buffer::new(read_state.clone(), 1),
         block_verifier_router,
@@ -1767,6 +1799,7 @@ async fn rpc_getblockhash() {
         .collect();
 
     let mut mempool: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
+    let tfl_service: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
     let (state, read_state, tip, _) = zebra_state::populated_state(blocks.clone(), &Mainnet).await;
 
     let (block_verifier_router, _, _, _) = zebra_consensus::router::init_test(
@@ -1785,6 +1818,7 @@ async fn rpc_getblockhash() {
         "0.0.1",
         "RPC test",
         Buffer::new(mempool.clone(), 1),
+        Buffer::new(tfl_service.clone(), 1),
         state.clone(),
         Buffer::new(read_state.clone(), 1),
         block_verifier_router,
@@ -1843,6 +1877,7 @@ async fn rpc_getmininginfo() {
         "0.0.1",
         "RPC test",
         MockService::build().for_unit_tests(),
+        MockService::build().for_unit_tests(),
         state.clone(),
         Buffer::new(read_state.clone(), 1),
         MockService::build().for_unit_tests(),
@@ -1879,6 +1914,7 @@ async fn rpc_getnetworksolps() {
         Default::default(),
         "0.0.1",
         "RPC test",
+        MockService::build().for_unit_tests(),
         MockService::build().for_unit_tests(),
         state.clone(),
         Buffer::new(read_state.clone(), 1),
@@ -1947,6 +1983,7 @@ async fn gbt_with(net: Network, addr: ZcashAddress) {
     let mut mempool: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
     let state: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
     let read_state: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
+    let tfl_service: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
 
     let mut mock_sync_status = MockSyncStatus::default();
     mock_sync_status.set_is_close_to_tip(true);
@@ -1986,6 +2023,7 @@ async fn gbt_with(net: Network, addr: ZcashAddress) {
         "0.0.1",
         "RPC test",
         Buffer::new(mempool.clone(), 1),
+        Buffer::new(tfl_service.clone(), 1),
         state.clone(),
         Buffer::new(read_state.clone(), 1),
         MockService::build().for_unit_tests(),
@@ -2252,6 +2290,7 @@ async fn rpc_submitblock_errors() {
         .collect();
 
     let mut mempool: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
+    let tfl_service: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
     // Create a populated state service
     let (state, read_state, tip, _) = zebra_state::populated_state(blocks, &Mainnet).await;
 
@@ -2272,6 +2311,7 @@ async fn rpc_submitblock_errors() {
         "0.0.1",
         "RPC test",
         Buffer::new(mempool.clone(), 1),
+        Buffer::new(tfl_service.clone(), 1),
         state.clone(),
         Buffer::new(read_state.clone(), 1),
         block_verifier_router,
@@ -2320,6 +2360,7 @@ async fn rpc_validateaddress() {
         Default::default(),
         "0.0.1",
         "RPC test",
+        MockService::build().for_unit_tests(),
         MockService::build().for_unit_tests(),
         MockService::build().for_unit_tests(),
         MockService::build().for_unit_tests(),
@@ -2407,6 +2448,7 @@ async fn rpc_validateaddress_regtest() {
         MockService::build().for_unit_tests(),
         MockService::build().for_unit_tests(),
         MockService::build().for_unit_tests(),
+        MockService::build().for_unit_tests(),
         MockSyncStatus::default(),
         NoChainTip,
         MockAddressBookPeers::default(),
@@ -2462,6 +2504,7 @@ async fn rpc_z_validateaddress() {
         Default::default(),
         "0.0.1",
         "RPC test",
+        MockService::build().for_unit_tests(),
         MockService::build().for_unit_tests(),
         MockService::build().for_unit_tests(),
         MockService::build().for_unit_tests(),
@@ -2599,6 +2642,7 @@ async fn rpc_getdifficulty() {
         "RPC test",
         MockService::build().for_unit_tests(),
         MockService::build().for_unit_tests(),
+        MockService::build().for_unit_tests(),
         Buffer::new(read_state.clone(), 1),
         MockService::build().for_unit_tests(),
         mock_sync_status,
@@ -2721,6 +2765,7 @@ async fn rpc_z_listunifiedreceivers() {
         MockService::build().for_unit_tests(),
         MockService::build().for_unit_tests(),
         MockService::build().for_unit_tests(),
+        MockService::build().for_unit_tests(),
         MockSyncStatus::default(),
         NoChainTip,
         MockAddressBookPeers::default(),
@@ -2788,6 +2833,7 @@ async fn rpc_addnode() {
 
     // Init RPC
     let (_tx, rx) = tokio::sync::watch::channel(None);
+    let tfl_service: MockService<_, _, _, BoxError> = MockService::build().for_unit_tests();
     let (rpc, _) = RpcImpl::new(
         network,
         Default::default(),
@@ -2795,6 +2841,7 @@ async fn rpc_addnode() {
         "0.0.1",
         "RPC test",
         Buffer::new(mempool.clone(), 1),
+        Buffer::new(tfl_service.clone(), 1),
         Buffer::new(state.clone(), 1),
         Buffer::new(read_state.clone(), 1),
         block_verifier_router,

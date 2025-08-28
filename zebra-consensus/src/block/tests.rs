@@ -78,7 +78,7 @@ static INVALID_COINBASE_TRANSCRIPT: Lazy<
 
     // Test 1: Empty transaction
     let block1 = Block {
-        header: header.into(),
+        header: header.clone().into(),
         transactions: Vec::new(),
     };
 

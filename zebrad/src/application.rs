@@ -188,6 +188,10 @@ impl ZebradApp {
     }
 }
 
+/// Override for application config for use by crosslink tests.
+pub static CROSSLINK_TEST_CONFIG_OVERRIDE: std::sync::Mutex<Option<Arc<ZebradConfig>>> =
+    std::sync::Mutex::new(None);
+
 impl Application for ZebradApp {
     /// Entrypoint command for this application.
     type Cmd = EntryPoint;
@@ -200,7 +204,12 @@ impl Application for ZebradApp {
 
     /// Accessor for application configuration.
     fn config(&self) -> Arc<ZebradConfig> {
-        self.config.read()
+        CROSSLINK_TEST_CONFIG_OVERRIDE
+            .lock()
+            .unwrap()
+            .as_ref()
+            .cloned()
+            .unwrap_or_else(|| self.config.read())
     }
 
     /// Borrow the application state immutably.
@@ -572,6 +581,20 @@ pub fn boot(app_cell: &'static AppCell<ZebradApp>) -> ! {
     let args =
         EntryPoint::process_cli_args(env::args_os().collect()).unwrap_or_else(|err| err.exit());
 
+    #[cfg(feature = "viz_gui")]
+    {
+        // TODO: gate behind feature-flag
+        // TODO: only open the visualization window for the `start` command.
+        // i.e.: can we move it to that code without major refactor to make compiler happy?
+        let tokio_root_thread_handle = std::thread::spawn(move || {
+            ZebradApp::run(app_cell, args);
+        });
+
+        zebra_crosslink::viz::main(Some(tokio_root_thread_handle));
+    }
+
+    #[cfg(not(feature = "viz_gui"))]
     ZebradApp::run(app_cell, args);
+
     process::exit(0);
 }

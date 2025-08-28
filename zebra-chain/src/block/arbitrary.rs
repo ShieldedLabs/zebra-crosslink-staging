@@ -759,6 +759,7 @@ impl Arbitrary for Header {
                         difficulty_threshold,
                         nonce,
                         solution,
+                        fat_pointer_to_bft_block: FatPointerToBftBlock::null(),
                     }
                 },
             )

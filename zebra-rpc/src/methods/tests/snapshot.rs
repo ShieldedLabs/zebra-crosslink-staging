@@ -145,6 +145,7 @@ async fn test_z_get_treestate() {
         "0.0.1",
         "RPC test",
         Buffer::new(MockService::build().for_unit_tests::<_, _, BoxError>(), 1),
+        Buffer::new(MockService::build().for_unit_tests::<_, _, BoxError>(), 1),
         state,
         read_state,
         Buffer::new(MockService::build().for_unit_tests::<_, _, BoxError>(), 1),
@@ -213,7 +214,8 @@ async fn test_rpc_response_data_for_network(network: &Network) {
 
     let mut mempool: MockService<_, _, _, zebra_node_services::BoxError> =
         MockService::build().for_unit_tests();
-
+    let crosslink: MockService<_, _, _, zebra_node_services::BoxError> =
+        MockService::build().for_unit_tests();
     // Create a populated state service
     let (state, read_state, tip, _) = zebra_state::populated_state(blocks.clone(), network).await;
 
@@ -247,6 +249,7 @@ async fn test_rpc_response_data_for_network(network: &Network) {
         "0.0.1",
         "RPC test",
         Buffer::new(mempool.clone(), 1),
+        Buffer::new(crosslink.clone(), 1),
         state,
         read_state,
         block_verifier_router,
@@ -585,7 +588,9 @@ async fn test_mocked_rpc_response_data_for_network(network: &Network) {
     settings.set_snapshot_suffix(network_string(network));
 
     let (latest_chain_tip, _) = MockChainTip::new();
-    let state = MockService::build().for_unit_tests();
+    let mut state = MockService::build().for_unit_tests();
+    let mempool = MockService::build().for_unit_tests();
+    let tfl_service = MockService::build().for_unit_tests();
     let mut read_state = MockService::build().for_unit_tests();
 
     let (_tx, rx) = tokio::sync::watch::channel(None);
@@ -595,7 +600,8 @@ async fn test_mocked_rpc_response_data_for_network(network: &Network) {
         false,
         "0.0.1",
         "RPC test",
-        MockService::build().for_unit_tests(),
+        mempool,
+        tfl_service,
         state.clone(),
         read_state.clone(),
         MockService::build().for_unit_tests(),
@@ -1010,6 +1016,7 @@ pub async fn test_mining_rpcs<State, ReadState>(
 
     let (_tx, rx) = tokio::sync::watch::channel(None);
 
+    let mock_tfl_service = MockService::build().for_unit_tests();
     let (rpc, _) = RpcImpl::new(
         network.clone(),
         mining_conf.clone(),
@@ -1017,6 +1024,7 @@ pub async fn test_mining_rpcs<State, ReadState>(
         "0.0.1",
         "RPC test",
         Buffer::new(mempool.clone(), 1),
+        mock_tfl_service,
         state,
         read_state,
         block_verifier_router.clone(),
@@ -1149,6 +1157,7 @@ pub async fn test_mining_rpcs<State, ReadState>(
     // send tip hash and time needed for getblocktemplate rpc
     mock_tip_sender.send_best_tip_hash(fake_tip_hash);
 
+    let mock_tfl_service = MockService::build().for_unit_tests();
     let (rpc_mock_state, _) = RpcImpl::new(
         network.clone(),
         mining_conf.clone(),
@@ -1156,6 +1165,7 @@ pub async fn test_mining_rpcs<State, ReadState>(
         "0.0.1",
         "RPC test",
         Buffer::new(mempool.clone(), 1),
+        mock_tfl_service,
         state.clone(),
         read_state.clone(),
         block_verifier_router,
@@ -1265,6 +1275,7 @@ pub async fn test_mining_rpcs<State, ReadState>(
 
     // the following snapshots use a mock read_state and block_verifier_router
 
+    let mock_tfl_service = MockService::build().for_unit_tests();
     let mut mock_block_verifier_router = MockService::build().for_unit_tests();
     let (rpc_mock_state_verifier, _) = RpcImpl::new(
         network.clone(),
@@ -1273,6 +1284,7 @@ pub async fn test_mining_rpcs<State, ReadState>(
         "0.0.1",
         "RPC test",
         Buffer::new(mempool, 1),
+        mock_tfl_service,
         state.clone(),
         read_state.clone(),
         mock_block_verifier_router.clone(),

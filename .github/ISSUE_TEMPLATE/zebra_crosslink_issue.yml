@@ -1,0 +1,80 @@
+name: 🔗 Zebra-Crosslink Issue
+description: Report an issue specific to zebra-crosslink (Crosslink protocol implementation)
+title: "[Zebra-Crosslink]: "
+labels: ["needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## ⚠️ Important Notice
+        
+        This repository (`zebra-crosslink`) is an **early prototype** implementation of the Crosslink consensus protocol, built on top of the upstream Zebra codebase.
+        
+        **For general Zebra issues, questions, or discussions, please use the upstream repository:**
+        👉 [ZcashFoundation/zebra](https://github.com/ZcashFoundation/zebra)
+        
+        Only report issues here if they are **specifically related to the Crosslink protocol implementation** or functionality unique to this fork.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Issue Description
+      description: Describe the issue you're experiencing with zebra-crosslink
+      placeholder: What happened? What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: crosslink-context
+    attributes:
+      label: Crosslink Context
+      description: How is this issue related to Crosslink functionality?
+      placeholder: |
+        - Is this related to BFT consensus?
+        - Does it involve finality status?
+        - Is it specific to the TFL service?
+        - Does it occur before/after Crosslink activation?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this issue? (-if relevant?)
+      placeholder: |
+        1. Run command...
+        2. Observe behavior...
+        3. Expected vs actual result...
+    validations:
+      required: false
+
+  - type: input
+    id: version
+    attributes:
+      label: Zebra-Crosslink Version
+      description: What version/commit of zebra-crosslink are you using?
+      placeholder: "commit hash or tag or branchname"
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Your system environment
+      placeholder: |
+        - OS: 
+        - Rust version: 
+        - Build flags used:
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      description: Include any relevant log output or error messages
+      render: text
+    validations:
+      required: false
