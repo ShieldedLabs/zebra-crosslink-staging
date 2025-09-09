@@ -153,7 +153,10 @@ use tower::ServiceExt;
 use zcash_keys::address::Address;
 
 use zebra_chain::{
-    block::{self, genesis::regtest_genesis_block, ChainHistoryBlockTxAuthCommitmentHash, Height},
+    block::{
+        self, genesis::regtest_genesis_block, ChainHistoryBlockTxAuthCommitmentHash,
+        FatPointerToBftBlock, Height,
+    },
     parameters::{
         testnet::ConfiguredActivationHeights,
         Network::{self, *},
@@ -3355,6 +3358,7 @@ async fn nu6_funding_streams_and_coinbase_balance() -> Result<()> {
     let mut mempool = MockService::build()
         .with_max_request_delay(Duration::from_secs(5))
         .for_unit_tests();
+    let mock_tfl_service = MockService::build().for_unit_tests();
     let mut mock_sync_status = MockSyncStatus::default();
     mock_sync_status.set_is_close_to_tip(true);
 
@@ -3369,6 +3373,7 @@ async fn nu6_funding_streams_and_coinbase_balance() -> Result<()> {
         "0.0.1",
         "Zebra tests",
         mempool.clone(),
+        mock_tfl_service,
         state.clone(),
         read_state.clone(),
         block_verifier_router,
@@ -3527,6 +3532,7 @@ async fn nu6_funding_streams_and_coinbase_balance() -> Result<()> {
         block_template.height(),
         block_template.max_time(),
         block_template.submit_old(),
+        FatPointerToBftBlock::null(),
     );
 
     let proposal_block = proposal_block_from_template(&block_template, None, &network)?;
@@ -3585,6 +3591,7 @@ async fn nu6_funding_streams_and_coinbase_balance() -> Result<()> {
         block_template.height(),
         block_template.max_time(),
         block_template.submit_old(),
+        FatPointerToBftBlock::null(),
     );
 
     let proposal_block = proposal_block_from_template(&block_template, None, &network)?;

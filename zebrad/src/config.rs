@@ -77,6 +77,9 @@ pub struct ZebradConfig {
 
     /// Mining configuration
     pub mining: zebra_rpc::config::mining::Config,
+
+    /// CrossLink configuration
+    pub crosslink: zebra_crosslink::config::Config,
 }
 
 impl ZebradConfig {

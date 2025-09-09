@@ -20,6 +20,7 @@ use zebra_chain::{
 };
 use zebra_network::AddressBookPeers;
 use zebra_node_services::mempool;
+use zebra_state::crosslink::{TFLServiceRequest, TFLServiceResponse};
 
 use crate::{
     config,
@@ -92,6 +93,7 @@ impl RpcServer {
     #[allow(clippy::too_many_arguments)]
     pub async fn start<
         Mempool,
+        TFLService,
         State,
         ReadState,
         Tip,
@@ -99,7 +101,16 @@ impl RpcServer {
         SyncStatus,
         AddressBook,
     >(
-        rpc: RpcImpl<Mempool, State, ReadState, Tip, AddressBook, BlockVerifierRouter, SyncStatus>,
+        rpc: RpcImpl<
+            Mempool,
+            TFLService,
+            State,
+            ReadState,
+            Tip,
+            AddressBook,
+            BlockVerifierRouter,
+            SyncStatus,
+        >,
         conf: config::rpc::Config,
     ) -> Result<ServerTask, tower::BoxError>
     where
@@ -112,6 +123,15 @@ impl RpcServer {
             + Sync
             + 'static,
         Mempool::Future: Send,
+        TFLService: Service<
+                TFLServiceRequest,
+                Response = TFLServiceResponse,
+                Error = zebra_node_services::BoxError,
+            > + Clone
+            + Send
+            + Sync
+            + 'static,
+        TFLService::Future: Send,
         State: Service<
                 zebra_state::Request,
                 Response = zebra_state::Response,

@@ -2,6 +2,12 @@
 
 [Zebra](README.md)
 
+- [Crosslink](crosslink.md)
+  - [Scope and Goals](crosslink/scope-and-goals.md)
+    - [SCOPING.md](crosslink/SCOPING.md)
+    - [DELIVERABLES.md](crosslink/DELIVERABLES.md)
+  - [Design](crosslink/design.md)
+  - [Implementation](crosslink/implementation.md)
 - [User Documentation](user.md)
   - [System Requirements](user/requirements.md)
   - [Supported Platforms](user/supported-platforms.md)

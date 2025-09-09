@@ -130,6 +130,10 @@ pub enum NonFinalizedWriteMessage {
     /// A newly downloaded and semantically verified block prepared for
     /// contextual validation and insertion into the non-finalized state.
     Commit(QueuedSemanticallyVerified),
+    CrosslinkFinalized(
+        block::Hash,
+        tokio::sync::oneshot::Sender<Result<block::Hash, BoxError>>,
+    ),
     /// The hash of a block that should be invalidated and removed from
     /// the non-finalized state, if present.
     Invalidate {
@@ -335,6 +339,56 @@ impl WriteBlockWorkerTask {
         while let Some(msg) = non_finalized_block_write_receiver.blocking_recv() {
             let queued_child_and_rsp_tx = match msg {
                 NonFinalizedWriteMessage::Commit(queued_child) => Some(queued_child),
+                NonFinalizedWriteMessage::CrosslinkFinalized(hash, rsp_tx) => {
+                    if let Some(newly_finalized_blocks) =
+                        non_finalized_state.crosslink_finalize(hash)
+                    {
+                        info!("finalized {}, which implicitly finalizes:", hash);
+                        for i in 0..newly_finalized_blocks.len() {
+                            info!("  {}: {}", i, newly_finalized_blocks[i].block.hash());
+                        }
+
+                        update_latest_chain_channels(
+                            &non_finalized_state,
+                            chain_tip_sender,
+                            &non_finalized_state_sender,
+                            &mut last_zebra_mined_log_height,
+                        );
+
+                        // info!("finalized {}, which implicitly finalizes:", hash);
+                        for block in newly_finalized_blocks {
+                            let finalizable_block = non_finalized_state.finalize();
+                            match finalized_state.commit_finalized_direct(
+                                finalizable_block,
+                                None,
+                                "commit Crosslink-finalized block",
+                            ) {
+                                Ok((hash, _)) => info!("  {}", hash),
+                                Err(err) => {
+                                    unreachable!("unexpected finalized block commit error: {}", err)
+                                }
+                            }
+                        }
+                        // for block in newly_finalized_blocks {
+                        //     finalized_state.commit_finalized_direct(block.block.into(), None, "commit Crosslink-finalized block").expect(
+                        //         "unexpected finalized block commit error: blocks were already checked by the non-finalized state",
+                        //     );
+
+                        //     non_finalized_state.finalize();
+                        // }
+
+                        rsp_tx.send(Ok(hash));
+                    } else if finalized_state.db.contains_hash(hash) {
+                        // already de-facto finalized as below reorg height
+                        rsp_tx.send(Ok(hash));
+                    } else {
+                        rsp_tx.send(Err("Couldn't find finalized block".into()));
+                    }
+
+                    // TODO: we may want to add db data here
+
+                    continue;
+                }
                 NonFinalizedWriteMessage::Invalidate { hash, rsp_tx } => {
                     tracing::info!(?hash, "invalidating a block in the non-finalized state");
                     let _ = rsp_tx.send(non_finalized_state.invalidate_block(hash));

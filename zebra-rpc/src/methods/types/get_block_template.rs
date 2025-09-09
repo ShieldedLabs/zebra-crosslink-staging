@@ -215,6 +215,8 @@ pub struct BlockTemplateResponse {
     #[serde(rename = "submitold")]
     #[getter(copy)]
     pub(crate) submit_old: Option<bool>,
+    /// New version 5 field for crosslink
+    pub fat_pointer_to_bft_block: zebra_chain::block::FatPointerToBftBlock,
 }
 
 impl fmt::Debug for BlockTemplateResponse {
@@ -273,6 +275,7 @@ impl BlockTemplateResponse {
         #[cfg(test)] mempool_txs: Vec<(InBlockTxDependenciesDepth, VerifiedUnminedTx)>,
         submit_old: Option<bool>,
         extra_coinbase_data: Vec<u8>,
+        fat_pointer_to_bft_block: block::FatPointerToBftBlock,
     ) -> Self {
         // Calculate the next block height.
         let next_block_height =
@@ -348,7 +351,7 @@ impl BlockTemplateResponse {
         BlockTemplateResponse {
             capabilities,
 
-            version: ZCASH_BLOCK_VERSION,
+            version: ZCASH_BLOCK_VERSION + 1, // TODO(Sam): Make more nuanced later.
 
             previous_block_hash: chain_tip_and_local_time.tip_hash,
             block_commitments_hash: default_roots.block_commitments_hash,
@@ -383,6 +386,8 @@ impl BlockTemplateResponse {
             max_time: chain_tip_and_local_time.max_time,
 
             submit_old,
+
+            fat_pointer_to_bft_block,
         }
     }
 }

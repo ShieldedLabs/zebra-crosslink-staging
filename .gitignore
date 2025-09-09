@@ -4,6 +4,8 @@
 .zebra-state/
 # Nix configs
 shell.nix
+# Nix build results:
+result
 # Docker compose env files
 *.env
 
@@ -164,3 +166,4 @@ __pycache__/
 
 # RPC tests cache 
 zebra-rpc/qa/cache/
+.vscode/launch.json

@@ -231,6 +231,7 @@ pub fn proposal_block_from_template(
             difficulty_threshold,
             nonce: [0; 32].into(),
             solution: Solution::for_proposal(),
+            fat_pointer_to_bft_block: template.fat_pointer_to_bft_block.clone(),
         }),
         transactions,
     })

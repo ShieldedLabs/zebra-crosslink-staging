@@ -58,7 +58,7 @@ metrics = { workspace = true }
 mset = { workspace = true }
 regex = { workspace = true }
 rlimit = { workspace = true }
-rocksdb = { workspace = true, features = ["lz4"] }
+rocksdb = { workspace = true, features = ["lz4", "bindgen-runtime"] }
 semver = { workspace = true }
 crossbeam-channel = { workspace = true }
 serde = { workspace = true, features = ["serde_derive"] }

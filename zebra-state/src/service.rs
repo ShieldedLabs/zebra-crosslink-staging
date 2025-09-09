@@ -696,6 +696,32 @@ impl StateService {
         rsp_rx
     }
 
+    fn send_crosslink_finalized_to_non_finalized_state(
+        &mut self,
+        hash: block::Hash,
+    ) -> oneshot::Receiver<Result<block::Hash, BoxError>> {
+        let (rsp_tx, rsp_rx) = oneshot::channel();
+
+        if self.block_write_sender.finalized.is_none() {
+            if let Some(tx) = &self.block_write_sender.non_finalized {
+                if let Err(err) =
+                    tx.send(NonFinalizedWriteMessage::CrosslinkFinalized(hash, rsp_tx))
+                {
+                    tracing::warn!(
+                        ?err,
+                        "failed to send Crosslink-finalized hash to NonFinalizedState"
+                    );
+                };
+            } else {
+                let _ = rsp_tx.send(Err("not ready to crosslink-finalize blocks".into()));
+            }
+        } else {
+            let _ = rsp_tx.send(Err("not ready to crosslink-finalize blocks".into()));
+        }
+
+        rsp_rx
+    }
+
     /// Returns `true` if `hash` is a valid previous block hash for new non-finalized blocks.
     fn can_fork_chain_at(&self, hash: &block::Hash) -> bool {
         self.non_finalized_block_write_sent_hashes
@@ -1026,6 +1052,36 @@ impl Service<Request> for StateService {
                         // https://github.com/rust-lang/rust/issues/70142
                         .and_then(convert::identity)
                         .map(Response::Committed)
+                }
+                .instrument(span)
+                .boxed()
+            }
+
+            Request::CrosslinkFinalizeBlock(finalized) => {
+                info!("Trying to Crosslink-finalize {}", finalized);
+                // # Performance
+                //
+                // This method doesn't block, access the database, or perform CPU-intensive tasks,
+                // so we can run it directly in the tokio executor's Future threads.
+                let rsp_rx = self.send_crosslink_finalized_to_non_finalized_state(finalized);
+
+                // TODO:
+                //   - check for panics in the block write task here,
+                //     as well as in poll_ready()
+
+                // The work is all done, the future just waits on a channel for the result
+                timer.finish(module_path!(), line!(), "CrosslinkFinalizeBlock");
+
+                async move {
+                    rsp_rx
+                        .await
+                        .map_err(|_recv_error| {
+                            BoxError::from("block was dropped from the queue of finalized blocks")
+                        })
+                        // TODO: replace with Result::flatten once it stabilises
+                        // https://github.com/rust-lang/rust/issues/70142
+                        .and_then(convert::identity)
+                        .map(Response::CrosslinkFinalized)
                 }
                 .instrument(span)
                 .boxed()

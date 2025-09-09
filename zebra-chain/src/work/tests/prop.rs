@@ -37,7 +37,7 @@ prop_compose! {
             })
         ) -> Arc<block::Header> {
 
-        let mut fake_header = real_header;
+        let mut fake_header = real_header.clone();
         fake_header.solution = fake_solution;
 
         Arc::new(fake_header)
@@ -59,7 +59,7 @@ fn equihash_prop_test_solution() -> color_eyre::eyre::Result<()> {
                                       .ok()
                                       .and_then(|v| v.parse().ok())
                                       .unwrap_or(DEFAULT_TEST_INPUT_PROPTEST_CASES)),
-                |(fake_header in randomized_solutions(*block.header.as_ref()))| {
+                |(fake_header in randomized_solutions(block.header.as_ref().clone()))| {
             fake_header.solution
                 .check(&fake_header)
                 .expect_err("block header should not validate on randomized solution");
@@ -77,7 +77,7 @@ prop_compose! {
             })
         ) -> Arc<block::Header> {
 
-        let mut fake_header = real_header;
+        let mut fake_header = real_header.clone();
         fake_header.nonce = fake_nonce.into();
 
         Arc::new(fake_header)
@@ -93,7 +93,7 @@ fn equihash_prop_test_nonce() -> color_eyre::eyre::Result<()> {
             .expect("block test vector should deserialize");
         block.header.solution.check(&block.header)?;
 
-        proptest!(|(fake_header in randomized_nonce(*block.header.as_ref()))| {
+        proptest!(|(fake_header in randomized_nonce(block.header.as_ref().clone()))| {
             fake_header.solution
                 .check(&fake_header)
                 .expect_err("block header should not validate on randomized nonce");
@@ -133,7 +133,7 @@ fn equihash_prop_test_input() -> color_eyre::eyre::Result<()> {
                                   .ok()
                                   .and_then(|v| v.parse().ok())
                                  .unwrap_or(DEFAULT_TEST_INPUT_PROPTEST_CASES)),
-              |(fake_header in randomized_input(*block.header.as_ref()))| {
+              |(fake_header in randomized_input(block.header.as_ref().clone()))| {
             fake_header.solution
                 .check(&fake_header)
                 .expect_err("equihash solution should not validate on randomized input");

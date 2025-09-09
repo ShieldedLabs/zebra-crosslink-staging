@@ -1,0 +1,8 @@
+[language-server.rust-analyzer.config]
+#check.command = "clippy"
+check.command = "check"
+check.workspace = false
+
+[language-server.rust-analyzer.config.imports]
+prefix = "crate"
+granularity = { group = "module", enforce = true }

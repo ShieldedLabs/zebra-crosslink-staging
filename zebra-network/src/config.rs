@@ -846,13 +846,13 @@ impl<'de> Deserialize<'de> for Config {
 
                 // Return an error if the initial testnet peers includes any of the default initial Mainnet or Testnet
                 // peers and the configured network parameters are incompatible with the default public Testnet.
-                if !params_builder.is_compatible_with_default_parameters()
-                    && contains_default_initial_peers(&initial_testnet_peers)
-                {
-                    return Err(de::Error::custom(
-                        "cannot use default initials peers with incompatible testnet",
-                    ));
-                };
+                // if !params_builder.is_compatible_with_default_parameters()
+                //     && contains_default_initial_peers(&initial_testnet_peers)
+                // {
+                //     return Err(de::Error::custom(
+                //         "cannot use default initials peers with incompatible testnet",
+                //     ));
+                // };
 
                 // Return the default Testnet if no network name was configured and all parameters match the default Testnet
                 if network_name.is_none() && params_builder == testnet::Parameters::build() {

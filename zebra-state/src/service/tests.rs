@@ -75,12 +75,19 @@ async fn test_populated_state_responds_correctly(
 
         // Spec: transactions in the genesis block are ignored.
         if height.0 != 0 {
+            use chrono::Utc;
             for transaction in &block.transactions {
                 let transaction_hash = transaction.hash();
 
                 transcript.push((
                     Request::Transaction(transaction_hash),
-                    Ok(Response::Transaction(Some(transaction.clone()))),
+                    Ok(Response::Transaction(Some(crate::MinedTx {
+                        tx: transaction.clone(),
+                        height,
+                        // TODO: fix
+                        confirmations: 0,
+                        block_time: Utc::now(),
+                    }))),
                 ));
             }
         }
