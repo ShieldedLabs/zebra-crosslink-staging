@@ -77,6 +77,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
 
+      - name: Restore Arch build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cargo-cache
+            archlinux-cache/pacman
+          key: arch-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            arch-${{ runner.os }}-
+
       - name: Build Debug Binary
         shell: bash
         env:
@@ -84,9 +94,10 @@ jobs:
           OUTPUT_SHA: ./dist/${{ matrix.artifact_filename }}.sha256
         run: |
           set -euxo pipefail
-          mkdir -p .cargo-cache/registry .cargo-cache/git target
+          mkdir -p .cargo-cache/registry .cargo-cache/git target archlinux-cache/pacman
           docker run --rm \
             -v "$PWD":/work \
+            -v "$PWD/archlinux-cache/pacman":/var/cache/pacman \
             -w /work \
             -e CARGO_HOME=/work/.cargo-cache \
             -e RUSTUP_HOME=/work/.cargo-cache/rustup \
@@ -94,7 +105,9 @@ jobs:
               set -eux
               pacman -Syu --noconfirm --needed \
                 base-devel git curl pkgconf openssl clang mold binutils cmake protobuf alsa-lib
-              curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
+              if [ ! -f /work/.cargo-cache/env ]; then
+                curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain stable
+              fi
               source /work/.cargo-cache/env
               export CC=clang CXX=clang++
               export RUSTFLAGS="-C link-arg=-Wl,-s"
