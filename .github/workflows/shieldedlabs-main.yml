@@ -25,8 +25,10 @@ jobs:
         include:
           - cargo_flags: ""
             artifact_title: "zebra-crosslink (Ubuntu)"
+            artifact_filename: "zebra-crosslink-ubuntu"
           - cargo_flags: "--features viz_gui"
             artifact_title: "zebra-crosslink-viz (Ubuntu)"
+            artifact_filename: "zebra-crosslink-viz-ubuntu"
     runs-on: blacksmith-8vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4
@@ -41,19 +43,21 @@ jobs:
       - name: Build Debug Binary
         env:
           RUSTFLAGS: "-C debuginfo=2"
+          OUTPUT_FILE: ./dist/${{ matrix.artifact_filename }}
+          OUTPUT_SHA: ./dist/${{ matrix.artifact_filename }}.sha256
         run: |
           cargo build --bin zebrad ${{ matrix.cargo_flags }}
           mkdir -p dist
-          cp "target/debug/zebrad" ./dist/zebra-crosslink
-          sha256sum ./dist/zebra-crosslink | tee ./dist/zebra-crosslink.sha256
+          cp "target/debug/zebrad" "$OUTPUT_FILE"
+          sha256sum "$OUTPUT_FILE" | tee "$OUTPUT_SHA"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_title }}
           path: |
-            ./dist/zebra-crosslink
-            ./dist/zebra-crosslink.sha256
+            ./dist/${{ matrix.artifact_filename }}
+            ./dist/${{ matrix.artifact_filename }}.sha256
           if-no-files-found: error
 
   build-arch:
@@ -64,8 +68,10 @@ jobs:
         include:
           - cargo_flags: ""
             artifact_title: "zebra-crosslink (Arch)"
+            artifact_filename: "zebra-crosslink-arch"
           - cargo_flags: "--features viz_gui"
             artifact_title: "zebra-crosslink-viz (Arch)"
+            artifact_filename: "zebra-crosslink-viz-arch"
     runs-on: blacksmith-8vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4
@@ -73,6 +79,9 @@ jobs:
 
       - name: Build Debug Binary
         shell: bash
+        env:
+          OUTPUT_FILE: ./dist/${{ matrix.artifact_filename }}
+          OUTPUT_SHA: ./dist/${{ matrix.artifact_filename }}.sha256
         run: |
           set -euxo pipefail
           mkdir -p .cargo-cache/registry .cargo-cache/git target
@@ -91,17 +100,17 @@ jobs:
               export RUSTFLAGS="-C link-arg=-Wl,-s"
               cargo build --bin zebrad '"${{ matrix.cargo_flags }}"'
             '
-          mkdir dist
-          cp "target/debug/zebrad" ./dist/zebra-crosslink
-          sha256sum ./dist/zebra-crosslink | tee ./dist/zebra-crosslink.sha256
+          mkdir -p dist
+          cp "target/debug/zebrad" "$OUTPUT_FILE"
+          sha256sum "$OUTPUT_FILE" | tee "$OUTPUT_SHA"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_title }}
           path: |
-            ./dist/zebra-crosslink
-            ./dist/zebra-crosslink.sha256
+            ./dist/${{ matrix.artifact_filename }}
+            ./dist/${{ matrix.artifact_filename }}.sha256
           if-no-files-found: error
 
 
@@ -113,8 +122,10 @@ jobs:
         include:
           - cargo_flags: ""
             artifact_title: "zebra-crosslink (MacOS)"
+            artifact_filename: "zebra-crosslink-macos"
           - cargo_flags: "--features viz_gui"
             artifact_title: "zebra-crosslink-viz (MacOS)"
+            artifact_filename: "zebra-crosslink-viz-macos"
     runs-on: macos-15-xlarge
     steps:
       - uses: actions/checkout@v4
@@ -124,20 +135,22 @@ jobs:
       - name: Build (MacOS)
         env:
           RUSTFLAGS: "-C strip=symbols"
+          OUTPUT_FILE: ./dist/${{ matrix.artifact_filename }}
+          OUTPUT_SHA: ./dist/${{ matrix.artifact_filename }}.sha256
         run: |
           brew install protobuf
           cargo build --bin zebrad ${{ matrix.cargo_flags }}
           mkdir -p dist
-          cp "target/debug/zebrad" ./dist/zebra-crosslink
-          shasum -a 256 ./dist/zebra-crosslink | tee ./dist/zebra-crosslink.sha256
+          cp "target/debug/zebrad" "$OUTPUT_FILE"
+          shasum -a 256 "$OUTPUT_FILE" | tee "$OUTPUT_SHA"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_title }}
           path: |
-            ./dist/zebra-crosslink
-            ./dist/zebra-crosslink.sha256
+            ./dist/${{ matrix.artifact_filename }}
+            ./dist/${{ matrix.artifact_filename }}.sha256
           if-no-files-found: error
 
   release:
@@ -179,18 +192,18 @@ jobs:
             Built at: ${{ steps.notes.outputs.date }}
 
             Assets:
-            - zebra-crosslink (Ubuntu)
-            - zebra-crosslink (Ubuntu).sha256
-            - zebra-crosslink-viz (Ubuntu)
-            - zebra-crosslink-viz (Ubuntu).sha256
-            - zebra-crosslink (Arch)
-            - zebra-crosslink (Arch).sha256
-            - zebra-crosslink-viz (Arch)
-            - zebra-crosslink-viz (Arch).sha256
-            - zebra-crosslink (MacOS)
-            - zebra-crosslink (MacOS).sha256
-            - zebra-crosslink-viz (MacOS)
-            - zebra-crosslink-viz (MacOS).sha256
+            - zebra-crosslink-ubuntu
+            - zebra-crosslink-ubuntu.sha256
+            - zebra-crosslink-viz-ubuntu
+            - zebra-crosslink-viz-ubuntu.sha256
+            - zebra-crosslink-arch
+            - zebra-crosslink-arch.sha256
+            - zebra-crosslink-viz-arch
+            - zebra-crosslink-viz-arch.sha256
+            - zebra-crosslink-macos
+            - zebra-crosslink-macos.sha256
+            - zebra-crosslink-viz-macos
+            - zebra-crosslink-viz-macos.sha256
           files: ${{ steps.list_assets.outputs.files }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
