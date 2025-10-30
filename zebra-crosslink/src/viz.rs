@@ -250,6 +250,9 @@ pub struct VizState {
     pub bft_blocks: Vec<BftBlock>,
     /// Fat pointer to the BFT tip (all other fat pointers are available at height+1)
     pub fat_pointer_to_bft_tip: FatPointerToBftBlock2,
+
+    /// Current mempool transactions
+    pub mempool_txs: Vec<zebra_chain::transaction::VerifiedUnminedTx>,
 }
 
 /// Functions & structures for serializing visualizer state to/from disk.
@@ -595,6 +598,8 @@ pub async fn service_viz_requests(
             bft_err_flags: 0,
             bft_blocks: Vec::new(),
             fat_pointer_to_bft_tip: FatPointerToBftBlock2::null(),
+
+            mempool_txs: Vec::new(),
         }),
 
         // NOTE: bitwise not of x (!x in rust) is the same as -1 - x
@@ -616,6 +621,14 @@ pub async fn service_viz_requests(
             internal.our_set_bft_string = old_g.proposed_bft_string.clone();
             internal.active_bft_string = old_g.proposed_bft_string.clone();
         }
+
+        let mempool_txs = if let Ok(MempoolResponse::FullTransactions{ transactions, .. }) =
+            (call.mempool)(MempoolRequest::FullTransactions).await
+        {
+            transactions
+        } else {
+            Vec::new()
+        };
 
         if !old_g.consumed {
             std::thread::sleep(std::time::Duration::from_micros(500));
@@ -840,6 +853,7 @@ pub async fn service_viz_requests(
             bft_err_flags,
             bft_blocks,
             fat_pointer_to_bft_tip,
+            mempool_txs,
         };
 
         new_g.state = Arc::new(new_state);
@@ -3733,6 +3747,15 @@ pub async fn viz_main(
                         checkbox(ui, hash!(), "Wider tray", &mut tray_make_wider);
                     }
 
+                    ui.label(None, &format!("Mempool ({} txs):", g.state.mempool_txs.len()));
+                    for tx in &g.state.mempool_txs {
+                        for str in format!("{:#}", tx.transaction.transaction).split("\n") {
+                            ui.label(None, str);
+                        }
+                    }
+
+                    ui.label(None, "");
+                    ui.label(None, "Loaded instrs:");
                     widgets::Group::new(hash!(), vec2(tray_w - 15., tray_w)).ui(ui, |mut ui| {
                         let failed_instr_idxs_lock = TEST_FAILED_INSTR_IDXS.lock();
                         let failed_instr_idxs = failed_instr_idxs_lock.as_ref().unwrap();

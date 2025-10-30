@@ -20,6 +20,7 @@ use tracing::{error, info, warn};
 use zebra_chain::block::{Hash as BlockHash, Height as BlockHeight};
 use zebra_chain::transaction::Hash as TxHash;
 use zebra_state::{crosslink::*, Request as StateRequest, Response as StateResponse};
+use zebra_node_services::mempool::{Request as MempoolRequest, Response as MempoolResponse};
 
 use crate::chain::BftBlock;
 use crate::malctx::{MalPublicKey2, MalValidator};
@@ -61,6 +62,18 @@ pub(crate) type StateServiceProcedure = Arc<
         + Sync,
 >;
 
+pub(crate) type MempoolServiceProcedure = Arc<
+    dyn Fn(
+            MempoolRequest,
+        ) -> Pin<
+            Box<
+                dyn Future<Output = Result<MempoolResponse, Box<dyn std::error::Error + Send + Sync>>>
+                    + Send,
+            >,
+        > + Send
+        + Sync,
+>;
+
 /// A pinned-in-memory, heap-allocated, reference-counted, thread-safe, asynchronous function
 /// pointer that takes an `Arc<Block>` as input and returns `()` as its output.
 pub(crate) type ForceFeedPoWBlockProcedure = Arc<
@@ -82,6 +95,7 @@ pub(crate) type ForceFeedPoSBlockProcedure = Arc<
 #[derive(Clone)]
 pub struct TFLServiceCalls {
     pub(crate) state: StateServiceProcedure,
+    pub(crate) mempool: MempoolServiceProcedure,
     pub(crate) force_feed_pow: ForceFeedPoWBlockProcedure,
     pub(crate) force_feed_pos: ForceFeedPoSBlockProcedure,
 }
@@ -100,6 +114,7 @@ impl fmt::Debug for TFLServiceCalls {
 pub fn spawn_new_tfl_service(
     is_regtest: bool,
     state_service_call: StateServiceProcedure,
+    mempool_service_call: MempoolServiceProcedure,
     force_feed_pow_call: ForceFeedPoWBlockProcedure,
     config: crate::config::Config,
 ) -> (TFLServiceHandle, JoinHandle<Result<(), String>>) {
@@ -185,6 +200,7 @@ pub fn spawn_new_tfl_service(
         internal,
         call: TFLServiceCalls {
             state: state_service_call,
+            mempool: mempool_service_call,
             force_feed_pow: force_feed_pow_call,
             force_feed_pos,
         },

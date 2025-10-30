@@ -9253,6 +9253,7 @@ dependencies = [
  "tracing-futures",
  "tracing-subscriber",
  "zebra-chain",
+ "zebra-node-services",
  "zebra-state",
  "zebra-test",
  "zerocopy",
