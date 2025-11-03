@@ -613,14 +613,46 @@ pub async fn service_viz_requests(
         validators_keys_to_names: HashMap::new(),
     });
 
+    let mut had_bft_string = false;
     loop {
         let old_g = VIZ_G.lock().unwrap().as_ref().unwrap().clone();
 
-        if old_g.proposed_bft_string.is_some() {
+        if let Some(ref bft_string) = old_g.proposed_bft_string {
             let mut internal = tfl_handle.internal.lock().await;
-            internal.our_set_bft_string = old_g.proposed_bft_string.clone();
-            internal.active_bft_string = old_g.proposed_bft_string.clone();
+            internal.our_set_bft_string = Some(bft_string.clone());
+            internal.active_bft_string = Some(bft_string.clone());
+
+            if ! had_bft_string {
+                let tx: zebra_chain::transaction::UnminedTx = Transaction::VCrosslink {
+                    // TODO(@prod): determine from network/height
+                    network_upgrade: zebra_chain::parameters::NetworkUpgrade::Nu6,
+                    lock_time: LockTime::unlocked(),
+                    inputs: Vec::new(),
+                    outputs: Vec::new(),
+                    sapling_shielded_data: None,
+                    orchard_shielded_data: None,
+                    expiry_height: BlockHeight(0), // "don't expire"
+                    temp_cmd_buf: zebra_chain::block::CommandBuf::from_str(&bft_string),
+                }.into();
+                if let Ok(MempoolResponse::Queued(receivers)) =
+                    (call.mempool)(MempoolRequest::Queue(vec![tx.into()])).await
+                {
+                    for receiver in receivers {
+                        match receiver {
+                            Err(err) => warn!("tried to send command transaction: {}", err),
+                            Ok(receiver) => match receiver.await {
+                                Err(err) => warn!("tried to await command transaction: {}", err),
+                                Ok(result) => match result {
+                                    Err(err) => warn!("unsuccessfully mempooled transaction: {}", err),
+                                    Ok(()) => info!("successfully mempooled transaction"),
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
+        had_bft_string = old_g.proposed_bft_string.is_some();
 
         let mempool_txs = if let Ok(MempoolResponse::FullTransactions{ transactions, .. }) =
             (call.mempool)(MempoolRequest::FullTransactions).await
@@ -3278,10 +3310,6 @@ pub async fn viz_main(
                         ui.input_text(hash!(), "", &mut click_node.text);
                     }
 
-                    if click_node.txs_n > 0 {
-                        ui.label(None, &format!("Transactions: {}", click_node.txs_n));
-                    }
-
                     match &click_node.header {
                         VizHeader::None => {}
                         VizHeader::BlockHeader(hdr) => {
@@ -3324,6 +3352,22 @@ pub async fn viz_main(
                             let file = std::fs::File::create("block.hex");
                             block.zcash_serialize(file.unwrap());
                             println!("dumped block.hex");
+                        }
+                    }
+
+                    if click_node.txs_n > 0 {
+                        ui.label(None, &format!("Transactions: {}", click_node.txs_n));
+                    }
+
+                    if let Some(block) = &click_node.bc_block {
+                        for tx in &block.transactions {
+                            let cmd_str = if let zebra_chain::transaction::Transaction::VCrosslink{temp_cmd_buf, ..} = tx.as_ref() {
+                                temp_cmd_buf.to_str()
+                            } else {
+                                continue;
+                            };
+
+                            ui_color_label(&mut ui, &skin, BLACK, &format!(" - {}: {}", tx.hash(), cmd_str), 0.5*font_size);
                         }
                     }
                 },
