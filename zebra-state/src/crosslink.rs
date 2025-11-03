@@ -65,8 +65,6 @@ pub enum TFLServiceRequest {
     UpdateStaker(TFLStaker),
     /// Get the fat pointer to the BFT chain tip
     FatPointerToBFTChainTip,
-    /// Get the command buffer
-    GetCommandBuf,
     /// Set the command buffer
     SetCommandBuf(CommandBuf),
 }
@@ -94,8 +92,6 @@ pub enum TFLServiceResponse {
     UpdateStaker, // TODO: batch?
     /// Fat pointer to the BFT chain tip
     FatPointerToBFTChainTip(zebra_chain::block::FatPointerToBftBlock),
-    /// Get command buf
-    GetCommandBuf(CommandBuf),
     /// Set command buf
     SetCommandBuf,
 }

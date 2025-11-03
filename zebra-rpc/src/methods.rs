@@ -282,10 +282,6 @@ pub trait Rpc {
     async fn get_tfl_fat_pointer_to_bft_chain_tip(&self) -> Option<FatPointerToBftBlock>;
 
     /// Get BFT command buffer
-    #[method(name = "get_tfl_command_buf")]
-    async fn get_tfl_command_buf(&self) -> Option<zebra_chain::block::CommandBuf2>;
-
-    /// Get BFT command buffer
     #[method(name = "set_tfl_command_buf")]
     async fn set_tfl_command_buf(&self, string: String) -> Option<String>;
 
@@ -1837,23 +1833,6 @@ where
             .await;
         if let Ok(TFLServiceResponse::FatPointerToBFTChainTip(fat_pointer)) = ret {
             Some(fat_pointer)
-        } else {
-            tracing::error!(?ret, "Bad tfl service return.");
-            None
-        }
-    }
-
-    async fn get_tfl_command_buf(&self) -> Option<zebra_chain::block::CommandBuf2> {
-        let ret = self
-            .tfl_service
-            .clone()
-            .ready()
-            .await
-            .unwrap()
-            .call(TFLServiceRequest::GetCommandBuf)
-            .await;
-        if let Ok(TFLServiceResponse::GetCommandBuf(buf)) = ret {
-            Some(zebra_chain::block::CommandBuf2(buf))
         } else {
             tracing::error!(?ret, "Bad tfl service return.");
             None

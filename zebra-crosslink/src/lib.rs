@@ -1816,17 +1816,6 @@ async fn tfl_service_incoming_request(
             ))
         }
 
-        TFLServiceRequest::GetCommandBuf => {
-            let mut internal = internal_handle.internal.lock().await;
-            // info!("BFT command string: {:?}", internal.proposed_bft_string);
-            let str = internal.active_bft_string.take().unwrap_or(String::new());
-            internal.our_set_bft_string = None;
-            // let str = internal.proposed_bft_string.clone().unwrap_or(String::new());
-            Ok(TFLServiceResponse::GetCommandBuf(
-                zebra_chain::block::CommandBuf::from_str(&str),
-            ))
-        }
-
         TFLServiceRequest::SetCommandBuf(cmd) => {
             let mut internal = internal_handle.internal.lock().await;
             let cmd_str = cmd.to_str();
