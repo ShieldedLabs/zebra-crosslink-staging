@@ -780,11 +780,12 @@ async fn new_decided_bft_block_from_malachite(
 
                 // Modify the stake for members
                 if let Some(new_final_block) = &new_final_blocks[i] {
-                    if update_roster_for_block(&mut internal, new_final_block) {
+                    let cmd_c = update_roster_for_block(&mut internal, new_final_block);
+                    if cmd_c > 0 {
                         info!(
-                            "Applied command to roster from PoW height {}: \"{}\"",
+                            "Applied {} commands to roster from PoW height {}",
+                            cmd_c,
                             new_final_height_hashes[i].0 .0,
-                            new_final_block.header.temp_command_buf.to_str()
                         );
                     }
                 } else {
@@ -1025,178 +1026,188 @@ pub fn run_tfl_test(internal_handle: TFLServiceHandle) {
     tokio::task::spawn(test_format::instr_reader(internal_handle));
 }
 
-fn update_roster_for_block(internal: &mut TFLServiceInternal, block: &Block) -> bool {
-    let mut is_cmd = false;
-    let cmd_str = block.header.temp_command_buf.to_str();
-    let cmd = cmd_str.as_bytes();
+fn update_roster_for_block(internal: &mut TFLServiceInternal, block: &Block) -> usize {
     let roster = &mut internal.validators_at_current_height;
     let validators_keys_to_names = &mut internal.validators_keys_to_names;
+    let mut cmd_c = 0;
 
-    if cmd.len() == 0 {
-        // valid no-op
-    } else if !(cmd.len() >= 4 && cmd[3] == b'|') {
-        warn!(
-            "Roster command invalid: expected initial instruction\nCMD: \"{}\"",
-            cmd_str
-        );
-    } else {
-        let mut val_end = 4;
-        while val_end < cmd.len() && cmd[val_end] != b'|' {
-            val_end += 1;
-        }
+    for tx in &block.transactions {
+        let mut is_cmd = 0;
+        let cmd_str = if let zebra_chain::transaction::Transaction::VCrosslink{temp_cmd_buf, ..} = tx.as_ref() {
+            temp_cmd_buf.to_str()
+        } else {
+            continue;
+        };
+        let cmd = cmd_str.as_bytes();
 
-        let val_str = &cmd_str[4..val_end];
-        let maybe_val = str::parse::<u64>(val_str.trim());
-        // TODO (if this were anything close to production code): move these to before accepting them
-        if val_end + 1 >= cmd.len() {
+        if cmd.len() == 0 {
+            // valid no-op
+        } else if !(cmd.len() >= 4 && cmd[3] == b'|') {
             warn!(
-                "Roster command invalid: expected public address\nCMD: \"{}\"",
+                "Roster command invalid: expected initial instruction\nCMD: \"{}\"",
                 cmd_str
             );
-        } else if let Err(err) = maybe_val {
-            warn!(
-                "Roster command invalid: expected u64, received \"{}\" ({})\nCMD: \"{}\"",
-                val_str, err, cmd_str
-            );
         } else {
-            let val = maybe_val.expect("already checked above");
-
-            let addr0_bgn = val_end + 1;
-
-            let mut addr0_end = addr0_bgn;
-            while addr0_end < cmd.len() && cmd[addr0_end] != b'|' {
-                addr0_end += 1;
+            let mut val_end = 4;
+            while val_end < cmd.len() && cmd[val_end] != b'|' {
+                val_end += 1;
             }
 
-            info!(
-                "Roster: getting public address from {}",
-                &cmd_str[addr0_bgn..addr0_end]
-            );
-            let (_, _, public_key0) =
-                rng_private_public_key_from_address(&cmd[addr0_bgn..addr0_end]);
-            let roster_pos0 = roster.iter().position(|cmp| cmp.public_key == public_key0);
-
-            let (addr1_bgn, public_key1, mut roster_pos1) = if addr0_end + 1 < cmd.len() {
-                let addr1_bgn = addr0_end + 1;
-                info!(
-                    "Roster: getting additional public address from {}",
-                    &cmd_str[addr1_bgn..]
-                );
-                let (_, _, public_key1) = rng_private_public_key_from_address(&cmd[addr1_bgn..]);
-                let roster_pos1 = roster.iter().position(|cmp| cmp.public_key == public_key1);
-                (Some(addr1_bgn), Some(public_key1), roster_pos1)
-            } else {
-                (None, None, None)
-            };
-
-            // TODO: any more complicated & this should be broken up into subcommands
-            match cmd[..3] {
-                [b'A', b'D', b'D'] => {
-                    is_cmd = true;
-                    if let Some(roster_i) = roster_pos0 {
-                        roster[roster_i].voting_power += val;
-                    } else {
-                        roster.push(MalValidator::new(public_key0, val));
-                        validators_keys_to_names
-                            .insert(public_key0, cmd_str[addr0_bgn..addr0_end].to_string());
-                    }
-                }
-
-                [b'S', b'U', b'B'] => {
-                    is_cmd = true;
-                    if let Some(roster_i) = roster_pos0 {
-                        if roster[roster_i].voting_power < val {
-                            warn!("Roster command invalid: can't subtract more from the finalizer than their current value \"{}\"/{}: {} - {}\nCMD: \"{}\"",
-                                &cmd_str[addr0_bgn..addr0_end], MalPublicKey2(public_key0), roster[roster_i].voting_power, val, cmd_str);
-                            // TODO: roster[roster_i].voting_power = 0;
-                        } else {
-                            roster[roster_i].voting_power -= val;
-                        }
-                    } else {
-                        warn!("Roster command invalid: can't subtract from non-present finalizer \"{}\"/{}\nCMD: \"{}\"", &cmd_str[addr0_bgn..addr0_end], MalPublicKey2(public_key0), cmd_str);
-                    }
-                }
-
-                // "clear" to a given amount <= current voting power, probably 0
-                // This exists alongside SUB because it's awkward to predict in advance the exact
-                // voting power after block rewards have been accounted for.
-                [b'C', b'L', b'R'] => {
-                    is_cmd = true;
-                    if let Some(roster_i) = roster_pos0 {
-                        if roster[roster_i].voting_power < val {
-                            warn!("Roster command invalid: can't clear the finalizer to a higher current value \"{}\"/{}: {} => {}\nCMD: \"{}\"",
-                                &cmd_str[addr0_bgn..addr0_end], MalPublicKey2(public_key0), roster[roster_i].voting_power, val, cmd_str);
-                        } else {
-                            roster[roster_i].voting_power = val;
-                        }
-                    } else {
-                        warn!("Roster command invalid: can't clear from non-present finalizer \"{}\"/{}\nCMD: \"{}\"", &cmd_str[addr0_bgn..addr0_end], MalPublicKey2(public_key0), cmd_str);
-                    }
-                }
-
-                [b'M', b'O', b'V'] => {
-                    is_cmd = true;
-                    if let (Some(addr_bgn), Some(pk), Some(roster_i)) =
-                        (addr1_bgn, public_key1, roster_pos1)
-                    {
-                        if roster[roster_i].voting_power < val {
-                            warn!("Roster command invalid: can't subtract more from the finalizer than their current value \"{}\"/{}: {} - {}\nCMD: \"{}\"",
-                                    &cmd_str[addr1_bgn.unwrap_or(0)..], MalPublicKey2(pk), roster[roster_i].voting_power, val, cmd_str);
-                            // TODO: roster[roster_i].voting_power = 0;
-                        } else {
-                            roster[roster_i].voting_power -= val;
-
-                            if let Some(roster_i) = roster_pos0 {
-                                roster[roster_i].voting_power += val;
-                            } else {
-                                roster.push(MalValidator::new(public_key0, val));
-                                validators_keys_to_names
-                                    .insert(public_key0, cmd_str[addr0_bgn..addr0_end].to_string());
-                            }
-                        }
-                    } else {
-                        warn!("Roster command invalid: can't subtract from non-present finalizer \"{}\"\nCMD: \"{}\"", &cmd_str[addr1_bgn.unwrap_or(cmd_str.len())..], cmd_str);
-                    }
-                }
-
-                // "clear" to a given amount <= current voting power, probably 0
-                // This exists alongside SUB because it's awkward to predict in advance the exact
-                // voting power after block rewards have been accounted for.
-                [b'M', b'C', b'L'] => {
-                    is_cmd = true;
-                    if let (Some(addr_bgn), Some(pk), Some(roster_i)) =
-                        (addr1_bgn, public_key1, roster_pos1)
-                    {
-                        if roster[roster_i].voting_power < val {
-                            warn!("Roster command invalid: can't clear the finalizer to a higher current value \"{}\"/{}: {} => {}\nCMD: \"{}\"",
-                                &cmd_str[addr_bgn..], MalPublicKey2(pk), roster[roster_i].voting_power, val, cmd_str);
-                        } else {
-                            let d = roster[roster_i].voting_power - val;
-                            roster[roster_i].voting_power -= d;
-
-                            if let Some(roster_i) = roster_pos0 {
-                                roster[roster_i].voting_power += d;
-                            } else {
-                                roster.push(MalValidator::new(public_key0, d));
-                                validators_keys_to_names
-                                    .insert(public_key0, cmd_str[addr0_bgn..addr0_end].to_string());
-                            }
-                        }
-                    } else {
-                        warn!("Roster command invalid: can't clear from non-present finalizer \"{}\"\nCMD: \"{}\"", &cmd_str[addr1_bgn.unwrap_or(cmd_str.len())..], cmd_str);
-                    }
-                }
-
-                _ => warn!(
-                    "Roster command invalid: unrecognized instruction \"{}\"\nCMD: \"{}\"",
-                    &cmd_str[..3],
+            let val_str = &cmd_str[4..val_end];
+            let maybe_val = str::parse::<u64>(val_str.trim());
+            // TODO (if this were anything close to production code): move these to before accepting them
+            if val_end + 1 >= cmd.len() {
+                warn!(
+                    "Roster command invalid: expected public address\nCMD: \"{}\"",
                     cmd_str
-                ),
+                );
+            } else if let Err(err) = maybe_val {
+                warn!(
+                    "Roster command invalid: expected u64, received \"{}\" ({})\nCMD: \"{}\"",
+                    val_str, err, cmd_str
+                );
+            } else {
+                let val = maybe_val.expect("already checked above");
+
+                let addr0_bgn = val_end + 1;
+
+                let mut addr0_end = addr0_bgn;
+                while addr0_end < cmd.len() && cmd[addr0_end] != b'|' {
+                    addr0_end += 1;
+                }
+
+                info!(
+                    "Roster: getting public address from {}",
+                    &cmd_str[addr0_bgn..addr0_end]
+                );
+                let (_, _, public_key0) =
+                    rng_private_public_key_from_address(&cmd[addr0_bgn..addr0_end]);
+                let roster_pos0 = roster.iter().position(|cmp| cmp.public_key == public_key0);
+
+                let (addr1_bgn, public_key1, mut roster_pos1) = if addr0_end + 1 < cmd.len() {
+                    let addr1_bgn = addr0_end + 1;
+                    info!(
+                        "Roster: getting additional public address from {}",
+                        &cmd_str[addr1_bgn..]
+                    );
+                    let (_, _, public_key1) = rng_private_public_key_from_address(&cmd[addr1_bgn..]);
+                    let roster_pos1 = roster.iter().position(|cmp| cmp.public_key == public_key1);
+                    (Some(addr1_bgn), Some(public_key1), roster_pos1)
+                } else {
+                    (None, None, None)
+                };
+
+                // TODO: any more complicated & this should be broken up into subcommands
+                match cmd[..3] {
+                    [b'A', b'D', b'D'] => {
+                        is_cmd = 1;
+                        if let Some(roster_i) = roster_pos0 {
+                            roster[roster_i].voting_power += val;
+                        } else {
+                            roster.push(MalValidator::new(public_key0, val));
+                            validators_keys_to_names
+                                .insert(public_key0, cmd_str[addr0_bgn..addr0_end].to_string());
+                        }
+                    }
+
+                    [b'S', b'U', b'B'] => {
+                        is_cmd = 1;
+                        if let Some(roster_i) = roster_pos0 {
+                            if roster[roster_i].voting_power < val {
+                                warn!("Roster command invalid: can't subtract more from the finalizer than their current value \"{}\"/{}: {} - {}\nCMD: \"{}\"",
+                                    &cmd_str[addr0_bgn..addr0_end], MalPublicKey2(public_key0), roster[roster_i].voting_power, val, cmd_str);
+                                // TODO: roster[roster_i].voting_power = 0;
+                            } else {
+                                roster[roster_i].voting_power -= val;
+                            }
+                        } else {
+                            warn!("Roster command invalid: can't subtract from non-present finalizer \"{}\"/{}\nCMD: \"{}\"", &cmd_str[addr0_bgn..addr0_end], MalPublicKey2(public_key0), cmd_str);
+                        }
+                    }
+
+                    // "clear" to a given amount <= current voting power, probably 0
+                    // This exists alongside SUB because it's awkward to predict in advance the exact
+                    // voting power after block rewards have been accounted for.
+                    [b'C', b'L', b'R'] => {
+                        is_cmd = 1;
+                        if let Some(roster_i) = roster_pos0 {
+                            if roster[roster_i].voting_power < val {
+                                warn!("Roster command invalid: can't clear the finalizer to a higher current value \"{}\"/{}: {} => {}\nCMD: \"{}\"",
+                                    &cmd_str[addr0_bgn..addr0_end], MalPublicKey2(public_key0), roster[roster_i].voting_power, val, cmd_str);
+                            } else {
+                                roster[roster_i].voting_power = val;
+                            }
+                        } else {
+                            warn!("Roster command invalid: can't clear from non-present finalizer \"{}\"/{}\nCMD: \"{}\"", &cmd_str[addr0_bgn..addr0_end], MalPublicKey2(public_key0), cmd_str);
+                        }
+                    }
+
+                    [b'M', b'O', b'V'] => {
+                        is_cmd = 1;
+                        if let (Some(addr_bgn), Some(pk), Some(roster_i)) =
+                            (addr1_bgn, public_key1, roster_pos1)
+                        {
+                            if roster[roster_i].voting_power < val {
+                                warn!("Roster command invalid: can't subtract more from the finalizer than their current value \"{}\"/{}: {} - {}\nCMD: \"{}\"",
+                                        &cmd_str[addr1_bgn.unwrap_or(0)..], MalPublicKey2(pk), roster[roster_i].voting_power, val, cmd_str);
+                                // TODO: roster[roster_i].voting_power = 0;
+                            } else {
+                                roster[roster_i].voting_power -= val;
+
+                                if let Some(roster_i) = roster_pos0 {
+                                    roster[roster_i].voting_power += val;
+                                } else {
+                                    roster.push(MalValidator::new(public_key0, val));
+                                    validators_keys_to_names
+                                        .insert(public_key0, cmd_str[addr0_bgn..addr0_end].to_string());
+                                }
+                            }
+                        } else {
+                            warn!("Roster command invalid: can't subtract from non-present finalizer \"{}\"\nCMD: \"{}\"", &cmd_str[addr1_bgn.unwrap_or(cmd_str.len())..], cmd_str);
+                        }
+                    }
+
+                    // "clear" to a given amount <= current voting power, probably 0
+                    // This exists alongside SUB because it's awkward to predict in advance the exact
+                    // voting power after block rewards have been accounted for.
+                    [b'M', b'C', b'L'] => {
+                        is_cmd = 1;
+                        if let (Some(addr_bgn), Some(pk), Some(roster_i)) =
+                            (addr1_bgn, public_key1, roster_pos1)
+                        {
+                            if roster[roster_i].voting_power < val {
+                                warn!("Roster command invalid: can't clear the finalizer to a higher current value \"{}\"/{}: {} => {}\nCMD: \"{}\"",
+                                    &cmd_str[addr_bgn..], MalPublicKey2(pk), roster[roster_i].voting_power, val, cmd_str);
+                            } else {
+                                let d = roster[roster_i].voting_power - val;
+                                roster[roster_i].voting_power -= d;
+
+                                if let Some(roster_i) = roster_pos0 {
+                                    roster[roster_i].voting_power += d;
+                                } else {
+                                    roster.push(MalValidator::new(public_key0, d));
+                                    validators_keys_to_names
+                                        .insert(public_key0, cmd_str[addr0_bgn..addr0_end].to_string());
+                                }
+                            }
+                        } else {
+                            warn!("Roster command invalid: can't clear from non-present finalizer \"{}\"\nCMD: \"{}\"", &cmd_str[addr1_bgn.unwrap_or(cmd_str.len())..], cmd_str);
+                        }
+                    }
+
+                    _ => warn!(
+                        "Roster command invalid: unrecognized instruction \"{}\"\nCMD: \"{}\"",
+                        &cmd_str[..3],
+                        cmd_str
+                    ),
+                }
             }
         }
+
+        cmd_c += is_cmd
     }
 
-    is_cmd
+    cmd_c
 }
 
 async fn tfl_service_main_loop(internal_handle: TFLServiceHandle) -> Result<(), String> {

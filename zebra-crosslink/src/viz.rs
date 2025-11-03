@@ -2903,7 +2903,6 @@ pub async fn viz_main(
                             solution: zebra_chain::work::equihash::Solution::for_proposal(),
                             fat_pointer_to_bft_block:
                                 zebra_chain::block::FatPointerToBftBlock::null(),
-                            temp_command_buf: zebra_chain::block::CommandBuf::empty(),
                         };
                         let id = NodeId::Hash(header.hash().0);
                         (VizHeader::BlockHeader(header), id, None)
@@ -3286,7 +3285,6 @@ pub async fn viz_main(
                     match &click_node.header {
                         VizHeader::None => {}
                         VizHeader::BlockHeader(hdr) => {
-                            ui.label(None, &format!("CMD: '{}'", hdr.temp_command_buf.to_str()));
                             let string = format!("PoS fp all: {}", hdr.fat_pointer_to_bft_block);
                             let mut iter = string.chars();
 

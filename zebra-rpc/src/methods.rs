@@ -283,7 +283,7 @@ pub trait Rpc {
 
     /// Get BFT command buffer
     #[method(name = "get_tfl_command_buf")]
-    async fn get_tfl_command_buf(&self) -> Option<zebra_chain::block::CommandBuf>;
+    async fn get_tfl_command_buf(&self) -> Option<zebra_chain::block::CommandBuf2>;
 
     /// Get BFT command buffer
     #[method(name = "set_tfl_command_buf")]
@@ -1843,7 +1843,7 @@ where
         }
     }
 
-    async fn get_tfl_command_buf(&self) -> Option<zebra_chain::block::CommandBuf> {
+    async fn get_tfl_command_buf(&self) -> Option<zebra_chain::block::CommandBuf2> {
         let ret = self
             .tfl_service
             .clone()
@@ -1853,7 +1853,7 @@ where
             .call(TFLServiceRequest::GetCommandBuf)
             .await;
         if let Ok(TFLServiceResponse::GetCommandBuf(buf)) = ret {
-            Some(buf)
+            Some(zebra_chain::block::CommandBuf2(buf))
         } else {
             tracing::error!(?ret, "Bad tfl service return.");
             None
@@ -3203,11 +3203,6 @@ where
             .await
             .expect("get fat pointer should never fail only return a null pointer");
 
-        let temp_roster_edit_command_buf = self.get_tfl_command_buf().await.unwrap_or_else(|| {
-            tracing::error!("Failed to get temp roster command, inserting null bytes instead.");
-            CommandBuf::empty()
-        });
-
         // - After this point, the template only depends on the previously fetched data.
 
         let response = BlockTemplateResponse::new_internal(
@@ -3219,7 +3214,6 @@ where
             submit_old,
             extra_coinbase_data,
             fat_pointer,
-            temp_roster_edit_command_buf,
         );
 
         Ok(response.into())

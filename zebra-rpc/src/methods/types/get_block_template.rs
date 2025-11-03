@@ -217,9 +217,6 @@ pub struct BlockTemplateResponse {
     pub(crate) submit_old: Option<bool>,
     /// New version 5 field for crosslink
     pub fat_pointer_to_bft_block: zebra_chain::block::FatPointerToBftBlock,
-
-    /// A command string used during development.
-    pub temp_command_buf: zebra_chain::block::CommandBuf,
 }
 
 impl fmt::Debug for BlockTemplateResponse {
@@ -279,7 +276,6 @@ impl BlockTemplateResponse {
         submit_old: Option<bool>,
         extra_coinbase_data: Vec<u8>,
         fat_pointer_to_bft_block: block::FatPointerToBftBlock,
-        temp_command_buf: zebra_chain::block::CommandBuf,
     ) -> Self {
         // Calculate the next block height.
         let next_block_height =
@@ -392,7 +388,6 @@ impl BlockTemplateResponse {
             submit_old,
 
             fat_pointer_to_bft_block,
-            temp_command_buf,
         }
     }
 }

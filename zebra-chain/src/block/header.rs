@@ -18,42 +18,22 @@ use super::{merkle, Commitment, CommitmentError, Hash, Height};
 
 #[cfg(any(test, feature = "proptest-impl"))]
 use proptest_derive::Arbitrary;
+pub use zcash_primitives::transaction::CommandBuf;
 
-#[serde_with::serde_as]
-#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Serialize, Deserialize)]
-/// A (temporary) small fixed-size buffer for communicating crosslink dev/test commands
-pub struct CommandBuf {
-    #[serde_as(as = "serde_with::Bytes")]
-    /// Data buffer to contain short command
-    pub data: [u8; 128],
+#[derive(Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub struct CommandBuf2(pub CommandBuf);
+impl serde::Serialize for CommandBuf2 {
+    fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
+    where S: serde::Serializer
+    {
+        s.serialize_str(self.0.to_str())
+    }
 }
-impl CommandBuf {
-    /// size of the internal buffer
-    pub const SIZE: usize = 128;
-
-    /// Create an empty command buffer
-    pub fn empty() -> Self {
-        CommandBuf { data: [0; 128] }
-    }
-
-    /// get a rust string from the fixed-size buffer
-    pub fn from_str(str: &str) -> Self {
-        let mut buf = Self::empty();
-        let n = std::cmp::min(str.len(), Self::SIZE);
-        buf.data[..n].copy_from_slice(&str.as_bytes()[..n]);
-        buf
-    }
-
-    /// get a rust string from the fixed-size buffer
-    pub fn to_str(&self) -> &str {
-        let mut c = 0;
-        while c < self.data.len() {
-            if self.data[c] == 0 {
-                break;
-            }
-            c += 1;
-        }
-        std::str::from_utf8(&self.data[..c]).expect("init with valid UTF-8")
+impl<'d> serde::Deserialize<'d> for CommandBuf2 {
+    fn deserialize<S>(s: S) -> Result<Self, S::Error>
+    where S: serde::Deserializer<'d>
+    {
+        Ok(CommandBuf2(CommandBuf::from_str(<&str>::deserialize(s)?)))
     }
 }
 
@@ -127,8 +107,8 @@ pub struct Header {
     /// Crosslink fat pointer to PoS block.
     pub fat_pointer_to_bft_block: FatPointerToBftBlock,
 
-    /// A command string used during development.
-    pub temp_command_buf: CommandBuf,
+    // A command string used during development.
+    // pub temp_command_buf: CommandBuf2,
 }
 
 /// A bundle of signed votes for a block

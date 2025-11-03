@@ -88,9 +88,9 @@ impl ZcashSerialize for Header {
         if logical_version >= 5 {
             self.fat_pointer_to_bft_block.zcash_serialize(&mut writer)?;
         }
-        if logical_version >= 6 {
-            writer.write_all(&self.temp_command_buf.data)?;
-        }
+        // if logical_version >= 6 {
+        //     writer.write_all(&self.temp_command_buf.data)?;
+        // }
         Ok(())
     }
 }
@@ -128,13 +128,13 @@ impl ZcashDeserialize for Header {
                     super::FatPointerToBftBlock::null()
                 }
             },
-            temp_command_buf: {
-                let mut buf = crate::block::CommandBuf::empty();
-                if logical_version >= 6 {
-                    reader.read_exact(&mut buf.data)?
-                }
-                buf
-            },
+            // temp_command_buf: {
+            //     let mut buf = crate::block::CommandBuf::empty();
+            //     if logical_version >= 6 {
+            //         reader.read_exact(&mut buf.data)?
+            //     }
+            //     buf
+            // },
         })
     }
 }
