@@ -26,7 +26,7 @@ use crate::chain::BftBlock;
 use crate::malctx::{MalPublicKey2, MalValidator};
 use crate::FatPointerToBftBlock2;
 use crate::{
-    rng_private_public_key_from_address, tfl_service_incoming_request, TFLBlockFinality, TFLRoster,
+    rng_private_public_key_from_address, tfl_service_incoming_request, TFLBlockFinality,
     TFLServiceInternal,
 };
 
@@ -151,7 +151,6 @@ pub fn spawn_new_tfl_service(
         my_public_key: VerificationKeyBytes::from([0u8; 32]),
         latest_final_block: None,
         tfl_is_activated: if is_regtest { true } else { false },
-        stakers: Vec::new(),
         final_change_tx: broadcast::channel(16).0,
         bft_msg_flags: 0,
         bft_err_flags: 0,

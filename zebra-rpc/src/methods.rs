@@ -88,7 +88,7 @@ use zebra_consensus::{funding_stream_address, ParameterCheckpoint, RouterError};
 use zebra_network::{address_book_peers::AddressBookPeers, PeerSocketAddr};
 use zebra_node_services::mempool;
 use zebra_state::crosslink::{
-    TFLBlockFinality, TFLRoster, TFLServiceRequest, TFLServiceResponse, TFLStaker,
+    TFLBlockFinality, TFLServiceRequest, TFLServiceResponse,
 };
 use zebra_state::{HashOrHeight, OutputLocation, ReadRequest, ReadResponse, TransactionLocation};
 
@@ -130,7 +130,9 @@ use types::{
     unified_address::ZListUnifiedReceiversResponse,
     validate_address::ValidateAddressResponse,
     z_validate_address::ZValidateAddressResponse,
+    zec::Zec,
 };
+
 
 #[cfg(test)]
 mod tests;
@@ -261,7 +263,7 @@ pub trait Rpc {
     #[method(name = "is_tfl_activated")]
     async fn is_tfl_activated(&self) -> Option<bool>;
 
-    /// Placeholder function for getting finalizer roster.
+    /// Get the roster with stake presented as decimal/precise floating point ZEC
     ///
     /// zcashd reference: none
     /// method: post
@@ -270,12 +272,28 @@ pub trait Rpc {
     /// ## Example Usage
     /// ```shell
     /// curl -X POST -H "Content-Type: application/json" -d \
-    /// '{ "jsonrpc": "2.0", "method": "get_tfl_roster", "params": [], "id": 1 }' \
+    /// '{ "jsonrpc": "2.0", "method": "get_tfl_roster_zec", "params": [], "id": 1 }' \
     /// http://127.0.0.1:8232
     /// ```
     /// *(The `address:port` matches the value in `zebrad.toml > [rpc] > listen_addr`)*
-    #[method(name = "get_tfl_roster")]
-    async fn get_tfl_roster(&self) -> Option<TFLRoster>;
+    #[method(name = "get_tfl_roster_zec")]
+    async fn get_tfl_roster_zec(&self) -> Option<Vec<TFLStakerZec>>;
+
+    /// Get the roster with stake presented as an integer number of zatoshis
+    ///
+    /// zcashd reference: none
+    /// method: post
+    /// tags: tfl
+    ///
+    /// ## Example Usage
+    /// ```shell
+    /// curl -X POST -H "Content-Type: application/json" -d \
+    /// '{ "jsonrpc": "2.0", "method": "get_tfl_roster_zats", "params": [], "id": 1 }' \
+    /// http://127.0.0.1:8232
+    /// ```
+    /// *(The `address:port` matches the value in `zebrad.toml > [rpc] > listen_addr`)*
+    #[method(name = "get_tfl_roster_zats")]
+    async fn get_tfl_roster_zats(&self) -> Option<Vec<TFLStakerZats>>;
 
     /// Get the fat pointer to the BFT Chain tip. TODO: Example
     #[method(name = "get_tfl_fat_pointer_to_bft_chain_tip")]
@@ -284,24 +302,6 @@ pub trait Rpc {
     /// Get BFT command buffer
     #[method(name = "set_tfl_command_buf")]
     async fn set_tfl_command_buf(&self, string: String) -> Option<String>;
-
-    /// Placeholder function for updating stakers.
-    /// Adds a new staker if the `id` is unique. Modifies an existing staker if the `id` maps to
-    /// something already. If the new `stake` is 0, the staker is removed.
-    ///
-    /// zcashd reference: none
-    /// method: post
-    /// tags: tfl
-    ///
-    /// ## Example Usage
-    /// ```bash
-    /// curl -X POST -H "Content-Type: application/json" -d \
-    /// '{ "jsonrpc": "2.0", "method": "update_tfl_staker", "params": [{ "id": 1234, "stake": 5678 }], "id": 1 }' \
-    /// http://127.0.0.1:8232
-    /// ```
-    /// *(The `address:port` matches the value in `zebrad.toml > [rpc] > listen_addr`)*
-    #[method(name = "update_tfl_staker")]
-    async fn update_tfl_staker(&self, staker: TFLStaker);
 
     /// Placeholder function for getting actual final block.
     /// For the sake of testing, this currently treats pre-reorg block as final.
@@ -1805,7 +1805,7 @@ where
         }
     }
 
-    async fn get_tfl_roster(&self) -> Option<TFLRoster> {
+    async fn get_tfl_roster_zec(&self) -> Option<Vec<TFLStakerZec>> {
         let ret = self
             .tfl_service
             .clone()
@@ -1815,7 +1815,32 @@ where
             .call(TFLServiceRequest::Roster)
             .await;
         if let Ok(TFLServiceResponse::Roster(roster)) = ret {
-            Some(roster)
+            let mut new_roster = Vec::with_capacity(roster.len());
+            for (id, stake) in &roster {
+                new_roster.push(TFLStakerZec(*id, Zec::from(Amount::new(i64::try_from(*stake).ok()?))));
+            }
+            Some(new_roster)
+        } else {
+            tracing::error!(?ret, "Bad tfl service return.");
+            None
+        }
+    }
+
+    async fn get_tfl_roster_zats(&self) -> Option<Vec<TFLStakerZats>> {
+        let ret = self
+            .tfl_service
+            .clone()
+            .ready()
+            .await
+            .unwrap()
+            .call(TFLServiceRequest::Roster)
+            .await;
+        if let Ok(TFLServiceResponse::Roster(roster)) = ret {
+            let mut new_roster = Vec::with_capacity(roster.len());
+            for (id, stake) in &roster {
+                new_roster.push(TFLStakerZats(*id, *stake));
+            }
+            Some(new_roster)
         } else {
             tracing::error!(?ret, "Bad tfl service return.");
             None
@@ -1854,20 +1879,6 @@ where
             Some(string)
         } else {
             None
-        }
-    }
-
-    async fn update_tfl_staker(&self, staker: TFLStaker) {
-        if let Ok(TFLServiceResponse::UpdateStaker) = self
-            .tfl_service
-            .clone()
-            .ready()
-            .await
-            .unwrap()
-            .call(TFLServiceRequest::UpdateStaker(staker))
-            .await
-        {
-            // TODO: return something? success/new roster/...
         }
     }
 
@@ -5045,3 +5056,8 @@ pub enum AddNodeCommand {
     #[serde(rename = "add")]
     Add,
 }
+
+#[derive(Clone, serde::Serialize)]
+pub struct TFLStakerZec(#[serde(with = "hex")] [u8; 32], Zec<NonNegative>);
+#[derive(Clone, serde::Serialize)]
+pub struct TFLStakerZats(#[serde(with = "hex")] [u8; 32], u64);

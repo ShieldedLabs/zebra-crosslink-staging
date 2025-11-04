@@ -23,25 +23,6 @@ pub enum TFLBlockFinality {
     CantBeFinalized,
 }
 
-/// Placeholder representation for entity staking on PoS chain.
-// TODO: do we want to unify or separate staker/finalizer/delegator
-#[derive(Debug, PartialEq, Eq, Clone, serde::Serialize, serde::Deserialize)]
-pub struct TFLStaker {
-    /// Placeholder identity
-    pub id: u64, // TODO: IP/malachite identifier/...
-    /// Placeholder stake weight
-    pub stake: u64, // TODO: do we want to store flat/tree delegators
-                    // ALT: delegate_stake_to_id
-                    // ...
-}
-
-/// Placeholder representation for group of stakers that are to be treated as finalizers.
-#[derive(Debug, PartialEq, Eq, Clone, serde::Serialize, serde::Deserialize)]
-pub struct TFLRoster {
-    /// The list of stakers whose votes(?) will count. Sorted by weight(?)
-    pub finalizers: Vec<TFLStaker>,
-}
-
 /// Types of requests that can be made to the TFLService.
 ///
 /// These map one to one to the variants of the same name in [`TFLServiceResponse`].
@@ -61,8 +42,6 @@ pub enum TFLServiceRequest {
     TxFinalityStatus(zebra_chain::transaction::Hash),
     /// Get the finalizer roster
     Roster,
-    /// Update the list of stakers
-    UpdateStaker(TFLStaker),
     /// Get the fat pointer to the BFT chain tip
     FatPointerToBFTChainTip,
     /// Set the command buffer
@@ -87,9 +66,7 @@ pub enum TFLServiceResponse {
     /// Finality status of a transaction
     TxFinalityStatus(Option<TFLBlockFinality>),
     /// Finalizer roster
-    Roster(TFLRoster),
-    /// Update the list of stakers
-    UpdateStaker, // TODO: batch?
+    Roster(Vec<([u8; 32], u64)>),
     /// Fat pointer to the BFT chain tip
     FatPointerToBFTChainTip(zebra_chain::block::FatPointerToBftBlock),
     /// Set command buf

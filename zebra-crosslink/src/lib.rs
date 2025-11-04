@@ -164,8 +164,6 @@ pub(crate) struct TFLServiceInternal {
     latest_final_block: Option<(BlockHeight, BlockHash)>,
     tfl_is_activated: bool,
 
-    stakers: Vec<TFLStaker>,
-
     // channels
     final_change_tx: broadcast::Sender<(BlockHeight, BlockHash)>,
 
@@ -826,6 +824,7 @@ async fn new_decided_bft_block_from_malachite(
     tenderlink_roster_from_internal(&internal.validators_at_current_height)
 }
 
+// TODO: collapse away Malachite roster
 fn tenderlink_roster_from_internal(vals: &[MalValidator]) -> Vec<SortedRosterMember> {
     let mut ret: Vec<SortedRosterMember> = vals
         .iter()
@@ -835,15 +834,26 @@ fn tenderlink_roster_from_internal(vals: &[MalValidator]) -> Vec<SortedRosterMem
             cumulative_stake: 0,
         })
         .collect();
-    ret.sort_by_key(|m: &SortedRosterMember| (m.stake, m.pub_key));
-    ret.reverse();
 
-    let mut cumulative_stake = 0;
-    for m in &mut ret {
-        cumulative_stake += m.stake;
-        m.cumulative_stake = cumulative_stake;
+    // Roster needs to be sorted for various reasons, including determining who is under max, and
+    // giving a consistent index that can be used to represent a roster member.
+    // Needs to uniquely & stably tie-break members with the same stake, so that everyone has
+    // exactly the same view regardless of whether they found out about members in different
+    // orders... so we use pub_key.
+    //
+    // We separately keep track of cumulative stake to make weighted round-robin easy.
+    // fn prepare_roster(roster: &mut [SortedRosterMember])
+    {
+        ret.sort_by_key(|m: &SortedRosterMember| std::cmp::Reverse((m.stake, m.pub_key)));
+        debug_assert!(ret.is_sorted_by(|a, b| a.stake >= b.stake)); // descending
+
+        let mut cumulative_stake = 0;
+        for m in &mut ret {
+            cumulative_stake += m.stake;
+            m.cumulative_stake = cumulative_stake;
+        }
     }
-    debug_assert!(ret.is_sorted_by(|a, b| a.stake >= b.stake)); // descending
+
     ret
 }
 
@@ -1782,31 +1792,9 @@ async fn tfl_service_incoming_request(
             }
         })),
 
-        TFLServiceRequest::UpdateStaker(staker) => {
-            let mut internal = internal_handle.internal.lock().await;
-            if let Some(staker_i) = internal.stakers.iter().position(|x| x.id == staker.id) {
-                // existing staker: modify or remove
-                if staker.stake == 0 {
-                    internal.stakers.remove(staker_i);
-                } else {
-                    internal.stakers[staker_i] = staker;
-                }
-            } else if staker.stake != 0 {
-                // new staker: insert
-                internal.stakers.push(staker);
-            }
-
-            internal.stakers.sort_by(|a, b| b.stake.cmp(&a.stake)); // sort descending order
-            Ok(TFLServiceResponse::UpdateStaker)
-        }
-
         TFLServiceRequest::Roster => Ok(TFLServiceResponse::Roster({
             let internal = internal_handle.internal.lock().await;
-            let mut roster = TFLRoster {
-                finalizers: internal.stakers.clone(),
-            };
-            roster.finalizers.truncate(3);
-            roster
+            internal.validators_at_current_height.iter().map(|v| (<[u8; 32]>::from(v.public_key), v.voting_power)).collect()
         })),
 
         TFLServiceRequest::FatPointerToBFTChainTip => {
