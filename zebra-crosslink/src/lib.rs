@@ -1038,6 +1038,9 @@ pub fn run_tfl_test(internal_handle: TFLServiceHandle) {
 
 fn update_roster_for_cmd(roster: &mut Vec<MalValidator>, validators_keys_to_names: &mut HashMap<MalPublicKey, String>, cmd_str: &str) -> usize {
     use zcash_primitives::transaction::{ StakingAction, StakingActionKind };
+    // TODO: what is allowed in terms of multiple staking action in 1 command?
+    // Any subtract is serially dependent
+
     let action = match StakingAction::parse_from_cmd(cmd_str) {
         Err(err) => {
             warn!("{}", err);
@@ -1046,102 +1049,49 @@ fn update_roster_for_cmd(roster: &mut Vec<MalValidator>, validators_keys_to_name
         Ok(None) => return 0,
         Ok(Some(action)) => action,
     };
+    let (has_add, sub_key_name, is_clear) = match action.kind {
+        StakingActionKind::Add                  => (true,  None,                                                false),
+        StakingActionKind::Sub                  => (false, Some((action.target, &action.insecure_target_name)), false),
+        StakingActionKind::Clear                => (false, Some((action.target, &action.insecure_target_name)), true),
+        StakingActionKind::Move(source_pk)      => (true,  Some((source_pk,     &action.insecure_source_name)), false),
+        StakingActionKind::MoveClear(source_pk) => (true,  Some((source_pk,     &action.insecure_source_name)), true),
+    };
 
-    // TODO: what is allowed in terms of multiple staking action in 1 command?
-    // Any subtract is serially dependent
+    let mut amount = action.val;
+    if let Some((sub_key, sub_name)) = sub_key_name {
+        let sub_key = MalPublicKey2(sub_key.into());
+        let Some(member) = roster.iter_mut().find(|cmp| cmp.public_key == sub_key.0) else {
+            warn!("Roster command invalid: can't subtract from non-present finalizer \"{}\"\nCMD: \"{}\"", sub_name, cmd_str);
+            return 0;
+        };
 
-    let target_pub_key = MalPublicKey2(action.target.into());
-    let target_roster_pos = roster.iter().position(|cmp| cmp.public_key == target_pub_key.0);
-
-    // TODO: any more complicated & this should be broken up into subcommands
-    let val = action.val;
-    match action.kind {
-        StakingActionKind::Add => {
-            if let Some(target_roster_i) = target_roster_pos {
-                roster[target_roster_i].voting_power += val;
+        if member.voting_power < action.val {
+            if is_clear {
+                warn!("Roster command invalid: can't clear the finalizer to a higher current value \"{}\"/{}: {} => {}\nCMD: \"{}\"",
+                    sub_name, sub_key, member.voting_power, action.val, cmd_str);
             } else {
-                roster.push(MalValidator::new(target_pub_key.0, val));
-                validators_keys_to_names.insert(target_pub_key.0, action.insecure_target_name.clone());
+                warn!("Roster command invalid: can't subtract more from the finalizer than their current value \"{}\"/{}: {} - {}\nCMD: \"{}\"",
+                    sub_name, sub_key, member.voting_power, action.val, cmd_str);
             }
+            return 0;
         }
 
-        StakingActionKind::Sub => {
-            if let Some(target_roster_i) = target_roster_pos {
-                if roster[target_roster_i].voting_power < val {
-                    warn!("Roster command invalid: can't subtract more from the finalizer than their current value \"{}\"/{}: {} - {}\nCMD: \"{}\"",
-                        action.insecure_target_name, target_pub_key, roster[target_roster_i].voting_power, val, cmd_str);
-                    // TODO: roster[target_roster_i].voting_power = 0;
-                } else {
-                    roster[target_roster_i].voting_power -= val;
-                }
-            } else {
-                warn!("Roster command invalid: can't subtract from non-present finalizer \"{}\"/{}\nCMD: \"{}\"", action.insecure_target_name, target_pub_key, cmd_str);
-            }
+        if is_clear {
+            amount = member.voting_power - action.val
+        };
+
+        member.voting_power -= amount;
+    }
+
+    if has_add {
+        // NOTE: all adds are to action.target
+        let add_key = MalPublicKey2(action.target.into());
+        if let Some(member) = roster.iter_mut().find(|cmp| cmp.public_key == add_key.0) {
+            member.voting_power += amount;
+        } else {
+            roster.push(MalValidator::new(add_key.0, amount));
+            validators_keys_to_names.insert(add_key.0, action.insecure_target_name.clone());
         }
-
-        StakingActionKind::Clear => {
-            if let Some(target_roster_i) = target_roster_pos {
-                if roster[target_roster_i].voting_power < val {
-                    warn!("Roster command invalid: can't clear the finalizer to a higher current value \"{}\"/{}: {} => {}\nCMD: \"{}\"",
-                        action.insecure_target_name, target_pub_key, roster[target_roster_i].voting_power, val, cmd_str);
-                } else {
-                    roster[target_roster_i].voting_power = val;
-                }
-            } else {
-                warn!("Roster command invalid: can't clear from non-present finalizer \"{}\"/{}\nCMD: \"{}\"", action.insecure_target_name, target_pub_key, cmd_str);
-            }
-        }
-
-        StakingActionKind::Move(source_pk) => {
-            let source_pub_key = MalPublicKey2(source_pk.into());
-            if let Some(source) = roster.iter_mut().find(|cmp| cmp.public_key == source_pub_key.0) {
-                if source.voting_power < val {
-                    warn!("Roster command invalid: can't subtract more from the finalizer than their current value \"{}\"/{}: {} - {}\nCMD: \"{}\"",
-                        action.insecure_source_name, source_pub_key, source.voting_power, val, cmd_str);
-                    // TODO: roster[target_roster_i].voting_power = 0;
-                } else {
-                    source.voting_power -= val;
-
-                    if let Some(target_roster_i) = target_roster_pos {
-                        roster[target_roster_i].voting_power += val;
-                    } else {
-                        roster.push(MalValidator::new(target_pub_key.0, val));
-                        validators_keys_to_names.insert(target_pub_key.0, action.insecure_target_name.clone());
-                    }
-                }
-            } else {
-                warn!("Roster command invalid: can't subtract from non-present finalizer \"{}\"\nCMD: \"{}\"", action.insecure_source_name, cmd_str);
-            }
-        }
-
-        StakingActionKind::MoveClear(source_pk) => {
-            let source_pub_key = MalPublicKey2(source_pk.into());
-            if let Some(source) = roster.iter_mut().find(|cmp| cmp.public_key == source_pub_key.0) {
-                if source.voting_power < val {
-                    warn!("Roster command invalid: can't clear the finalizer to a higher current value \"{}\"/{}: {} => {}\nCMD: \"{}\"",
-                        action.insecure_source_name, source_pub_key, source.voting_power, val, cmd_str);
-                } else {
-                    let d = source.voting_power - val;
-                    source.voting_power -= d;
-
-                    if let Some(target_roster_i) = target_roster_pos {
-                        roster[target_roster_i].voting_power += d;
-                    } else {
-                        roster.push(MalValidator::new(target_pub_key.0, d));
-                        validators_keys_to_names
-                            .insert(target_pub_key.0, action.insecure_target_name.to_string());
-                    }
-                }
-            } else {
-                warn!("Roster command invalid: can't clear from non-present finalizer \"{}\"\nCMD: \"{}\"", action.insecure_source_name, cmd_str);
-            }
-        }
-
-        _ => warn!(
-            "Roster command invalid: unrecognized instruction \"{}\"\nCMD: \"{}\"",
-            &cmd_str[..3],
-            cmd_str
-        ),
     }
 
     1
