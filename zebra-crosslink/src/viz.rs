@@ -3365,7 +3365,7 @@ pub async fn viz_main(
                                 continue;
                             };
                             if let Some(staking_action) = staking_action {
-                                ui_color_label(&mut ui, &skin, BLACK, &format!(" - {}: {}", tx.hash(), staking_action), 0.5*font_size);
+                                ui_color_label(&mut ui, &skin, BLACK, &format!(" - {}: {}", tx.hash(), staking_action.to_cmd_string()), 0.5*font_size);
                             }
                         }
                     }
