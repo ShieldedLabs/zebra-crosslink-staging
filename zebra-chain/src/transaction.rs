@@ -193,7 +193,7 @@ pub enum Transaction {
         orchard_shielded_data: Option<orchard::ShieldedData>,
 
         /// Crosslink-specific data:
-        temp_cmd_buf: crate::block::CommandBuf,
+        staking_action: Option<zcash_primitives::transaction::StakingAction>,
         // TODO: Add the rest of the v6 fields.
     },
 }
@@ -225,8 +225,8 @@ impl fmt::Display for Transaction {
 
         fmter.field("unmined_id", &self.unmined_id());
 
-        if let Transaction::VCrosslink{ temp_cmd_buf, .. } = self {
-            fmter.field("command", &temp_cmd_buf.to_str());
+        if let Transaction::VCrosslink{ staking_action, .. } = self {
+            fmter.field("staking_action", staking_action);
         }
 
         fmter.finish()

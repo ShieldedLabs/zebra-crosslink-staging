@@ -13,6 +13,7 @@ use strum::{EnumCount, IntoEnumIterator};
 use strum_macros::EnumIter;
 
 use tenderlink::SortedRosterMember;
+use zcash_primitives::transaction::{ StakingAction, StakingActionKind };
 use zebra_chain::serialization::{ZcashDeserializeInto, ZcashSerialize};
 use zebra_state::crosslink::*;
 
@@ -1036,42 +1037,33 @@ pub fn run_tfl_test(internal_handle: TFLServiceHandle) {
     tokio::task::spawn(test_format::instr_reader(internal_handle));
 }
 
-fn update_roster_for_cmd(roster: &mut Vec<MalValidator>, validators_keys_to_names: &mut HashMap<MalPublicKey, String>, cmd_str: &str) -> usize {
-    use zcash_primitives::transaction::{ StakingAction, StakingActionKind };
+fn update_roster_for_cmd(roster: &mut Vec<MalValidator>, validators_keys_to_names: &mut HashMap<MalPublicKey, String>, action: &StakingAction) -> usize {
     // TODO: what is allowed in terms of multiple staking action in 1 command?
     // Any subtract is serially dependent
 
-    let action = match StakingAction::parse_from_cmd(cmd_str) {
-        Err(err) => {
-            warn!("{}", err);
-            return 0;
-        }
-        Ok(None) => return 0,
-        Ok(Some(action)) => action,
-    };
     let (has_add, sub_key_name, is_clear) = match action.kind {
-        StakingActionKind::Add                  => (true,  None,                                                false),
-        StakingActionKind::Sub                  => (false, Some((action.target, &action.insecure_target_name)), false),
-        StakingActionKind::Clear                => (false, Some((action.target, &action.insecure_target_name)), true),
-        StakingActionKind::Move(source_pk)      => (true,  Some((source_pk,     &action.insecure_source_name)), false),
-        StakingActionKind::MoveClear(source_pk) => (true,  Some((source_pk,     &action.insecure_source_name)), true),
+        StakingActionKind::Add       => (true,  None,                                                false),
+        StakingActionKind::Sub       => (false, Some((action.target, &action.insecure_target_name)), false),
+        StakingActionKind::Clear     => (false, Some((action.target, &action.insecure_target_name)), true),
+        StakingActionKind::Move      => (true,  Some((action.source, &action.insecure_source_name)), false),
+        StakingActionKind::MoveClear => (true,  Some((action.source, &action.insecure_source_name)), true),
     };
 
     let mut amount = action.val;
     if let Some((sub_key, sub_name)) = sub_key_name {
         let sub_key = MalPublicKey2(sub_key.into());
         let Some(member) = roster.iter_mut().find(|cmp| cmp.public_key == sub_key.0) else {
-            warn!("Roster command invalid: can't subtract from non-present finalizer \"{}\"\nCMD: \"{}\"", sub_name, cmd_str);
+            warn!("Roster command invalid: can't subtract from non-present finalizer \"{}\"", sub_name);
             return 0;
         };
 
         if member.voting_power < action.val {
             if is_clear {
-                warn!("Roster command invalid: can't clear the finalizer to a higher current value \"{}\"/{}: {} => {}\nCMD: \"{}\"",
-                    sub_name, sub_key, member.voting_power, action.val, cmd_str);
+                warn!("Roster command invalid: can't clear the finalizer to a higher current value \"{}\"/{}: {} => {}",
+                    sub_name, sub_key, member.voting_power, action.val);
             } else {
-                warn!("Roster command invalid: can't subtract more from the finalizer than their current value \"{}\"/{}: {} - {}\nCMD: \"{}\"",
-                    sub_name, sub_key, member.voting_power, action.val, cmd_str);
+                warn!("Roster command invalid: can't subtract more from the finalizer than their current value \"{}\"/{}: {} - {}",
+                    sub_name, sub_key, member.voting_power, action.val);
             }
             return 0;
         }
@@ -1104,10 +1096,10 @@ fn update_roster_for_block(internal: &mut TFLServiceInternal, block: &Block) -> 
 
     for tx in &block.transactions {
         let mut is_cmd = 0;
-        let cmd_str = if let zebra_chain::transaction::Transaction::VCrosslink{temp_cmd_buf, ..} = tx.as_ref() {
-            cmd_c += update_roster_for_cmd(roster, validators_keys_to_names, &temp_cmd_buf.to_str());
-        } else {
-            continue;
+        if let zebra_chain::transaction::Transaction::VCrosslink{staking_action, ..} = tx.as_ref() {
+            if let Some(staking_action) = staking_action {
+                cmd_c += update_roster_for_cmd(roster, validators_keys_to_names, &staking_action);
+            }
         };
     }
 

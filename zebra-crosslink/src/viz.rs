@@ -632,7 +632,7 @@ pub async fn service_viz_requests(
                     sapling_shielded_data: None,
                     orchard_shielded_data: None,
                     expiry_height: BlockHeight(0), // "don't expire"
-                    temp_cmd_buf: zebra_chain::block::CommandBuf::from_str(&bft_string),
+                    staking_action: zcash_primitives::transaction::StakingAction::parse_from_cmd(&bft_string).unwrap_or(None),
                 }.into();
                 if let Ok(MempoolResponse::Queued(receivers)) =
                     (call.mempool)(MempoolRequest::Queue(vec![tx.into()])).await
@@ -3361,13 +3361,12 @@ pub async fn viz_main(
 
                     if let Some(block) = &click_node.bc_block {
                         for tx in &block.transactions {
-                            let cmd_str = if let zebra_chain::transaction::Transaction::VCrosslink{temp_cmd_buf, ..} = tx.as_ref() {
-                                temp_cmd_buf.to_str()
-                            } else {
+                            let zebra_chain::transaction::Transaction::VCrosslink{staking_action, ..} = tx.as_ref() else {
                                 continue;
                             };
-
-                            ui_color_label(&mut ui, &skin, BLACK, &format!(" - {}: {}", tx.hash(), cmd_str), 0.5*font_size);
+                            if let Some(staking_action) = staking_action {
+                                ui_color_label(&mut ui, &skin, BLACK, &format!(" - {}: {}", tx.hash(), staking_action), 0.5*font_size);
+                            }
                         }
                     }
                 },

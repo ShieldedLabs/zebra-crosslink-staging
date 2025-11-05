@@ -1,7 +1,7 @@
 //! Contains impls of `ZcashSerialize`, `ZcashDeserialize` for all of the
 //! transaction types, so that all of the serialization logic is in one place.
 
-use std::{borrow::Borrow, io::{self, Read}, sync::Arc};
+use std::{borrow::Borrow, io, sync::Arc};
 
 use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
 use halo2::pasta::group::ff::PrimeField;
@@ -730,7 +730,7 @@ impl ZcashSerialize for Transaction {
                 outputs,
                 sapling_shielded_data,
                 orchard_shielded_data,
-                temp_cmd_buf,
+                staking_action,
             } => {
                 // Transaction V6 spec:
                 // https://zips.z.cash/zip-0230#specification
@@ -768,8 +768,8 @@ impl ZcashSerialize for Transaction {
                 // `proofsOrchard`, `vSpendAuthSigsOrchard`, and `bindingSigOrchard`.
                 orchard_shielded_data.zcash_serialize(&mut writer)?;
 
-                writer.write_all(&temp_cmd_buf.data)?;
-                // TODO: Add the rest of v6 transaction fields.
+                zcash_primitives::transaction::StakingAction::write(&staking_action, &mut writer)?;
+                // TODO: Add the rest of v6 transaction fields?
             }
         }
         Ok(())
@@ -1060,9 +1060,7 @@ impl ZcashDeserialize for Transaction {
                 // `proofsOrchard`, `vSpendAuthSigsOrchard`, and `bindingSigOrchard`.
                 let orchard_shielded_data = (&mut limited_reader).zcash_deserialize_into()?;
 
-                // TODO: variable-length
-                let mut temp_cmd_buf = crate::block::CommandBuf::empty();
-                limited_reader.read_exact(&mut temp_cmd_buf.data)?;
+                let staking_action = zcash_primitives::transaction::StakingAction::read(&mut limited_reader)?;
 
                 Ok(Transaction::VCrosslink {
                     network_upgrade,
@@ -1072,7 +1070,7 @@ impl ZcashDeserialize for Transaction {
                     outputs,
                     sapling_shielded_data,
                     orchard_shielded_data,
-                    temp_cmd_buf,
+                    staking_action,
                 })
             }
             (_, _) => Err(SerializationError::Parse("bad tx header")),
