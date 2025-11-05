@@ -4,7 +4,7 @@ use std::fmt;
 
 use tokio::sync::broadcast;
 
-use zebra_chain::block::{CommandBuf, Hash as BlockHash, Height as BlockHeight};
+use zebra_chain::block::{Hash as BlockHash, Height as BlockHeight};
 
 /// The finality status of a block
 #[derive(Debug, PartialEq, Eq, Clone, serde::Serialize, serde::Deserialize)]
@@ -44,8 +44,8 @@ pub enum TFLServiceRequest {
     Roster,
     /// Get the fat pointer to the BFT chain tip
     FatPointerToBFTChainTip,
-    /// Set the command buffer
-    SetCommandBuf(CommandBuf),
+    /// Send a staking command transaction
+    StakingCmd(String),
 }
 
 /// Types of responses that can be returned by the TFLService.
@@ -69,8 +69,8 @@ pub enum TFLServiceResponse {
     Roster(Vec<([u8; 32], u64)>),
     /// Fat pointer to the BFT chain tip
     FatPointerToBFTChainTip(zebra_chain::block::FatPointerToBftBlock),
-    /// Set command buf
-    SetCommandBuf,
+    /// Send a staking command transaction
+    StakingCmd,
 }
 
 /// Errors that can occur when interacting with the TFLService.

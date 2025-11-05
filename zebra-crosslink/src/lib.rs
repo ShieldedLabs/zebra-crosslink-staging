@@ -1037,6 +1037,40 @@ pub fn run_tfl_test(internal_handle: TFLServiceHandle) {
     tokio::task::spawn(test_format::instr_reader(internal_handle));
 }
 
+async fn push_staking_action_from_cmd_str(call: &TFLServiceCalls, cmd_str: &str) -> Result<(), String> {
+    use zebra_chain::transaction::{ LockTime, Transaction, UnminedTx };
+    let staking_action = zcash_primitives::transaction::StakingAction::parse_from_cmd(cmd_str)?;
+    let tx: UnminedTx = Transaction::VCrosslink {
+        // TODO(@prod): determine from network/height
+        network_upgrade: zebra_chain::parameters::NetworkUpgrade::Nu6,
+        lock_time: LockTime::unlocked(),
+        inputs: Vec::new(),
+        outputs: Vec::new(),
+        sapling_shielded_data: None,
+        orchard_shielded_data: None,
+        expiry_height: BlockHeight(0), // "don't expire"
+        staking_action,
+    }.into();
+
+    if let Ok(MempoolResponse::Queued(receivers)) =
+        (call.mempool)(MempoolRequest::Queue(vec![tx.into()])).await
+    {
+        for receiver in receivers {
+            match receiver {
+                Err(err) => return Err(format!("tried to send command transaction: {err}")),
+                Ok(receiver) => match receiver.await {
+                    Err(err) => return Err(format!("tried to await command transaction: {err}")),
+                    Ok(result) => match result {
+                        Err(err) => return Err(format!("unsuccessfully mempooled transaction: {err}")),
+                        Ok(()) => {}
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 fn update_roster_for_cmd(roster: &mut Vec<MalValidator>, validators_keys_to_names: &mut HashMap<MalPublicKey, String>, action: &StakingAction) -> usize {
     // TODO: what is allowed in terms of multiple staking action in 1 command?
     // Any subtract is serially dependent
@@ -1691,13 +1725,11 @@ async fn tfl_service_incoming_request(
             ))
         }
 
-        TFLServiceRequest::SetCommandBuf(cmd) => {
-            let mut internal = internal_handle.internal.lock().await;
-            let cmd_str = cmd.to_str();
-            info!("Forced BFT command string: {:?}", cmd_str);
-            internal.our_set_bft_string = Some(cmd_str.to_string());
-            internal.active_bft_string = internal.our_set_bft_string.clone();
-            Ok(TFLServiceResponse::SetCommandBuf)
+        TFLServiceRequest::StakingCmd(cmd) => {
+            match push_staking_action_from_cmd_str(&internal_handle.call, &cmd).await {
+                Ok(()) => Ok(TFLServiceResponse::StakingCmd),
+                Err(err) => Err(TFLServiceError::Misc(format!("{err}"))),
+            }
         }
 
         _ => Err(TFLServiceError::NotImplemented),

@@ -623,32 +623,9 @@ pub async fn service_viz_requests(
             internal.active_bft_string = Some(bft_string.clone());
 
             if ! had_bft_string {
-                let tx: zebra_chain::transaction::UnminedTx = Transaction::VCrosslink {
-                    // TODO(@prod): determine from network/height
-                    network_upgrade: zebra_chain::parameters::NetworkUpgrade::Nu6,
-                    lock_time: LockTime::unlocked(),
-                    inputs: Vec::new(),
-                    outputs: Vec::new(),
-                    sapling_shielded_data: None,
-                    orchard_shielded_data: None,
-                    expiry_height: BlockHeight(0), // "don't expire"
-                    staking_action: zcash_primitives::transaction::StakingAction::parse_from_cmd(&bft_string).unwrap_or(None),
-                }.into();
-                if let Ok(MempoolResponse::Queued(receivers)) =
-                    (call.mempool)(MempoolRequest::Queue(vec![tx.into()])).await
-                {
-                    for receiver in receivers {
-                        match receiver {
-                            Err(err) => warn!("tried to send command transaction: {}", err),
-                            Ok(receiver) => match receiver.await {
-                                Err(err) => warn!("tried to await command transaction: {}", err),
-                                Ok(result) => match result {
-                                    Err(err) => warn!("unsuccessfully mempooled transaction: {}", err),
-                                    Ok(()) => info!("successfully mempooled transaction"),
-                                }
-                            }
-                        }
-                    }
+                match push_staking_action_from_cmd_str(&call, &bft_string).await {
+                    Ok(()) => info!("successfully mempooled transaction"),
+                    Err(err) => warn!("staking command \"{bft_string}\" failed: {err}"),
                 }
             }
         }

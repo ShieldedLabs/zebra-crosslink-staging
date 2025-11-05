@@ -62,7 +62,7 @@ use zcash_primitives::consensus::Parameters;
 use zebra_chain::{
     amount::{self, Amount, NegativeAllowed, NonNegative},
     block::{
-        self, Block, CommandBuf, Commitment, FatPointerToBftBlock, Height, SerializedBlock,
+        self, Block, Commitment, FatPointerToBftBlock, Height, SerializedBlock,
         TryIntoHeight,
     },
     chain_sync_status::ChainSyncStatus,
@@ -300,8 +300,8 @@ pub trait Rpc {
     async fn get_tfl_fat_pointer_to_bft_chain_tip(&self) -> Option<FatPointerToBftBlock>;
 
     /// Get BFT command buffer
-    #[method(name = "set_tfl_command_buf")]
-    async fn set_tfl_command_buf(&self, string: String) -> Option<String>;
+    #[method(name = "staking_command")]
+    async fn staking_command(&self, string: String) -> Result<String>;
 
     /// Placeholder function for getting actual final block.
     /// For the sake of testing, this currently treats pre-reorg block as final.
@@ -1864,21 +1864,21 @@ where
         }
     }
 
-    async fn set_tfl_command_buf(&self, string: String) -> Option<String> {
-        if let Ok(TFLServiceResponse::SetCommandBuf) = self
+    async fn staking_command(&self, cmd: String) -> Result<String> {
+        match self
             .tfl_service
             .clone()
             .ready()
             .await
             .unwrap()
-            .call(TFLServiceRequest::SetCommandBuf(CommandBuf::from_str(
-                &string,
-            )))
+            .call(TFLServiceRequest::StakingCmd(cmd.clone()))
             .await
         {
-            Some(string)
-        } else {
-            None
+            Ok(TFLServiceResponse::StakingCmd) => Ok(cmd),
+            Ok(_) => unreachable!("unmatched response to a `StakingCmd` request"),
+            Err(err) => Err(ErrorObject::owned(server::error::LegacyCode::Verify.into(),
+                    format!("staking command \"{cmd}\" failed: {err}"),
+                    None::<()>)),
         }
     }
 
