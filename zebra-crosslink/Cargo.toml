@@ -49,6 +49,7 @@ zerocopy-derive = "0.8.25"
 blake3 = "1.8.2"
 byteorder = { workspace = true }
 ed25519-zebra = { workspace = true }
+zcash_primitives = { workspace = true }
 
 static_assertions = { workspace = true }
 
