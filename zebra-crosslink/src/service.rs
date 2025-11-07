@@ -23,7 +23,6 @@ use zebra_state::{crosslink::*, Request as StateRequest, Response as StateRespon
 use zebra_node_services::mempool::{Request as MempoolRequest, Response as MempoolResponse};
 
 use crate::chain::BftBlock;
-use crate::malctx::{MalPublicKey2, MalValidator};
 use crate::FatPointerToBftBlock2;
 use crate::{
     rng_private_public_key_from_address, tfl_service_incoming_request, TFLBlockFinality,
@@ -124,7 +123,7 @@ pub fn spawn_new_tfl_service(
 
         for peer in config.malachite_peers.iter() {
             let (_, _, public_key) = rng_private_public_key_from_address(peer.as_bytes());
-            array.push(MalValidator::new(public_key, 1));
+            array.push(crate::MalValidator::new(public_key, 1));
             map.insert(public_key, peer.to_string());
         }
 
@@ -140,7 +139,7 @@ pub fn spawn_new_tfl_service(
             // .unwrap_or(String::from_str("tester").unwrap());
             info!("user_name: {}", user_name);
             let (_, _, public_key) = rng_private_public_key_from_address(&user_name.as_bytes());
-            array.push(MalValidator::new(public_key, 1));
+            array.push(crate::MalValidator::new(public_key, 1));
             map.insert(public_key, user_name);
         }
 
@@ -158,8 +157,6 @@ pub fn spawn_new_tfl_service(
         fat_pointer_to_tip: FatPointerToBftBlock2::null(),
         our_set_bft_string: None,
         active_bft_string: None,
-        #[cfg(feature = "malachite")]
-        malachite_watchdog: tokio::time::Instant::now(),
         validators_at_current_height,
         validators_keys_to_names,
         current_bc_final: None,
@@ -171,11 +168,6 @@ pub fn spawn_new_tfl_service(
     let force_feed_pos: ForceFeedPoSBlockProcedure = Arc::new(move |block, fat_pointer| {
         let handle = handle_mtx2.lock().unwrap().clone().unwrap();
         Box::pin(async move {
-            #[cfg(feature = "malachite")]
-            let (accepted, _) =
-                crate::new_decided_bft_block_from_malachite(&handle, block.as_ref(), &fat_pointer)
-                    .await;
-            #[cfg(not(feature = "malachite"))]
             let accepted = if fat_pointer.points_at_block_hash() == block.blake3_hash() {
                 crate::validate_bft_block_from_malachite(&handle, block.as_ref()).await
                     == tenderlink::TMStatus::Pass
@@ -184,7 +176,6 @@ pub fn spawn_new_tfl_service(
             };
             if accepted {
                 info!("Successfully force-fed BFT block");
-                #[cfg(not(feature = "malachite"))]
                 crate::new_decided_bft_block_from_malachite(&handle, block.as_ref(), &fat_pointer)
                     .await;
                 true

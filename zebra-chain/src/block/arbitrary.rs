@@ -760,7 +760,6 @@ impl Arbitrary for Header {
                         nonce,
                         solution,
                         fat_pointer_to_bft_block: FatPointerToBftBlock::null(),
-                        temp_command_buf: CommandBuf::empty(),
                     }
                 },
             )

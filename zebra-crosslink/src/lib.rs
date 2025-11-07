@@ -10,11 +10,11 @@ use color_eyre::install;
 
 use async_trait::async_trait;
 use strum::{EnumCount, IntoEnumIterator};
-use strum_macros::EnumIter;
+use strum_macros::{EnumIter, EnumCount};
 
 use tenderlink::SortedRosterMember;
 use zcash_primitives::transaction::{ StakingAction, StakingActionKind };
-use zebra_chain::serialization::{ZcashDeserializeInto, ZcashSerialize};
+use zebra_chain::serialization::{SerializationError, ZcashDeserialize, ZcashDeserializeInto, ZcashSerialize};
 use zebra_state::crosslink::*;
 
 use multiaddr::Multiaddr;
@@ -32,14 +32,11 @@ use tracing::{error, info, warn};
 
 use bytes::{Bytes, BytesMut};
 
-pub mod malctx;
-use malctx::*;
+use ed25519_zebra::SigningKey as MalPrivateKey;
+use ed25519_zebra::VerificationKeyBytes as MalPublicKey;
+
 pub mod chain;
 use chain::*;
-#[cfg(feature = "malachite")]
-pub mod mal_system;
-#[cfg(feature = "malachite")]
-use mal_system::*;
 
 use std::sync::Mutex;
 use tokio::sync::Mutex as TokioMutex;
@@ -174,9 +171,6 @@ pub(crate) struct TFLServiceInternal {
     fat_pointer_to_tip: FatPointerToBftBlock2,
     our_set_bft_string: Option<String>,
     active_bft_string: Option<String>,
-
-    #[cfg(feature = "malachite")]
-    malachite_watchdog: Instant,
 
     // TODO: 2 versions of this: ever-added (in sequence) & currently non-0
     validators_keys_to_names: HashMap<MalPublicKey, String>,
@@ -359,8 +353,6 @@ async fn push_new_bft_msg_flags(
 
 async fn propose_new_bft_block(
     tfl_handle: &TFLServiceHandle,
-    #[cfg(feature = "malachite")] my_public_key: &MalPublicKey,
-    #[cfg(feature = "malachite")] at_height: u64,
 ) -> Option<BftBlock> {
     #[cfg(feature = "viz_gui")]
     if let Some(state) = viz::VIZ_G.lock().unwrap().as_ref() {
@@ -448,28 +440,6 @@ async fn propose_new_bft_block(
 
     let mut internal = tfl_handle.internal.lock().await;
 
-    #[cfg(feature = "malachite")]
-    if internal.bft_blocks.len() as u64 + 1 != at_height {
-        warn!(
-            "Malachite is out of sync with us due to out of band syncing. Let us force reboot it."
-        );
-        internal.malachite_watchdog = Instant::now()
-            .checked_sub(Duration::from_secs(60 * 60 * 24 * 365))
-            .unwrap();
-        return None;
-    }
-
-    #[cfg(feature = "malachite")]
-    if internal
-        .validators_at_current_height
-        .iter()
-        .position(|v| v.address.0 == *my_public_key)
-        .is_none()
-    {
-        warn!("I am not in the roster so I will abstain from proposing.");
-        return None;
-    }
-
     match BftBlock::try_from(
         params,
         internal.bft_blocks.len() as u32 + 1,
@@ -525,16 +495,12 @@ async fn malachite_wants_to_know_what_the_current_validator_set_is(
 
     finalizers
 }
-#[cfg(feature = "malachite")]
-type RustIsBadAndHasNoIfDefReturnType1 = (bool, Vec<MalValidator>);
-#[cfg(not(feature = "malachite"))]
-type RustIsBadAndHasNoIfDefReturnType1 = Vec<tenderlink::SortedRosterMember>;
 
 async fn new_decided_bft_block_from_malachite(
     tfl_handle: &TFLServiceHandle,
     new_block: &BftBlock,
     fat_pointer: &FatPointerToBftBlock2,
-) -> RustIsBadAndHasNoIfDefReturnType1 {
+) -> Vec<tenderlink::SortedRosterMember> {
     let call = tfl_handle.call.clone();
     let params = &PROTOTYPE_PARAMETERS;
 
@@ -555,39 +521,19 @@ async fn new_decided_bft_block_from_malachite(
     }
 
     if fat_pointer.points_at_block_hash() != new_block.blake3_hash() {
-        warn!(
+        error!(
             "Fat Pointer hash does not match block hash. fp: {} block: {}",
             fat_pointer.points_at_block_hash(),
             new_block.blake3_hash()
         );
-        #[cfg(feature = "malachite")]
-        {
-            internal.malachite_watchdog = Instant::now()
-                .checked_sub(Duration::from_secs(60 * 60 * 24 * 365))
-                .unwrap();
-            return (false, return_validator_list_because_of_malachite_bug);
-        }
-        #[cfg(not(feature = "malachite"))]
-        {
-            panic!();
-        }
+        panic!();
     }
     // TODO: check public keys on the fat pointer against the roster
     if fat_pointer.validate_signatures() == false {
-        warn!("Signatures are not valid. Rejecting block.");
-        #[cfg(feature = "malachite")]
-        return (false, return_validator_list_because_of_malachite_bug);
-        #[cfg(not(feature = "malachite"))]
+        error!("Signatures are not valid. Rejecting block.");
         panic!();
     }
 
-    #[cfg(feature = "malachite")]
-    if validate_bft_block_from_malachite_already_locked(&tfl_handle, &mut internal, new_block).await
-        == false
-    {
-        return (false, return_validator_list_because_of_malachite_bug);
-    }
-    #[cfg(not(feature = "malachite"))]
     assert_eq!(
         validate_bft_block_from_malachite_already_locked(&tfl_handle, &mut internal, new_block)
             .await,
@@ -631,10 +577,6 @@ async fn new_decided_bft_block_from_malachite(
     internal.bft_blocks[insert_i] = new_block.clone();
     internal.fat_pointer_to_tip = fat_pointer.clone();
     internal.latest_final_block = Some((new_final_height, new_final_hash));
-    #[cfg(feature = "malachite")]
-    {
-        internal.malachite_watchdog = Instant::now();
-    }
 
     match (call.state)(zebra_state::Request::CrosslinkFinalizeBlock(new_final_hash)).await {
         Ok(zebra_state::Response::CrosslinkFinalized(hash)) => {
@@ -803,25 +745,6 @@ async fn new_decided_bft_block_from_malachite(
         internal.current_bc_final = new_bc_final;
     }
 
-    #[cfg(feature = "malachite")]
-    let mut return_validator_list_because_of_malachite_bug =
-        internal.validators_at_current_height.clone();
-    #[cfg(feature = "malachite")]
-    if return_validator_list_because_of_malachite_bug
-        .iter()
-        .position(|v| v.address.0 == internal.my_public_key)
-        .is_none()
-    {
-        return_validator_list_because_of_malachite_bug.push(MalValidator {
-            address: MalPublicKey2(internal.my_public_key),
-            public_key: internal.my_public_key,
-            voting_power: 0,
-        });
-    }
-
-    #[cfg(feature = "malachite")]
-    return (true, return_validator_list_because_of_malachite_bug);
-
     tenderlink_roster_from_internal(&internal.validators_at_current_height)
 }
 
@@ -858,15 +781,10 @@ fn tenderlink_roster_from_internal(vals: &[MalValidator]) -> Vec<SortedRosterMem
     ret
 }
 
-#[cfg(feature = "malachite")]
-type RustIsBadAndHasNoIfDefReturnType2 = bool;
-#[cfg(not(feature = "malachite"))]
-type RustIsBadAndHasNoIfDefReturnType2 = tenderlink::TMStatus;
-
 async fn validate_bft_block_from_malachite(
     tfl_handle: &TFLServiceHandle,
     new_block: &BftBlock,
-) -> RustIsBadAndHasNoIfDefReturnType2 {
+) -> tenderlink::TMStatus {
     let mut internal = tfl_handle.internal.lock().await;
     validate_bft_block_from_malachite_already_locked(tfl_handle, &mut internal, new_block).await
 }
@@ -874,7 +792,7 @@ async fn validate_bft_block_from_malachite_already_locked(
     tfl_handle: &TFLServiceHandle,
     internal: &mut TFLServiceInternal,
     new_block: &BftBlock,
-) -> RustIsBadAndHasNoIfDefReturnType2 {
+) -> tenderlink::TMStatus {
     let call = tfl_handle.call.clone();
     let params = &PROTOTYPE_PARAMETERS;
 
@@ -886,9 +804,6 @@ async fn validate_bft_block_from_malachite_already_locked(
             new_block.previous_block_fat_ptr.points_at_block_hash(),
             internal.fat_pointer_to_tip.points_at_block_hash(),
         );
-        #[cfg(feature = "malachite")]
-        return false;
-        #[cfg(not(feature = "malachite"))]
         return tenderlink::TMStatus::Fail;
     }
 
@@ -901,14 +816,8 @@ async fn validate_bft_block_from_malachite_already_locked(
                 "Didn't have hash available for confirmation: {}",
                 new_final_hash
             );
-            #[cfg(feature = "malachite")]
-            return false;
-            #[cfg(not(feature = "malachite"))]
             return tenderlink::TMStatus::Indeterminate;
         };
-    #[cfg(feature = "malachite")]
-    return true;
-    #[cfg(not(feature = "malachite"))]
     return tenderlink::TMStatus::Pass;
 }
 
@@ -1174,105 +1083,6 @@ async fn tfl_service_main_loop(internal_handle: TFLServiceHandle) -> Result<(), 
         rng_private_public_key_from_address(&user_name.as_bytes());
     internal_handle.internal.lock().await.my_public_key = my_public_key;
 
-    let my_signing_provider = MalEd25519Provider::new(my_private_key.clone());
-    let ctx = MalContext {};
-
-    let codec = MalProtobufCodec;
-
-    let init_bft_height = MalHeight::new(1);
-
-    // let mut bft_config = config::load_config(std::path::Path::new("C:\\Users\\azmre\\.malachite\\config\\config.toml"), None)
-    //     .expect("Failed to load configuration file");
-    let mut bft_config: BFTConfig = Default::default(); // TODO: read from file?
-
-    bft_config.logging.log_level = crate::mconfig::LogLevel::Error;
-
-    #[cfg(feature = "malachite")]
-    for peer in config.malachite_peers.iter() {
-        bft_config
-            .consensus
-            .p2p
-            .persistent_peers
-            .push(Multiaddr::from_str(&peer).unwrap());
-    }
-    #[cfg(feature = "malachite")]
-    if bft_config.consensus.p2p.persistent_peers.is_empty() {
-        bft_config
-            .consensus
-            .p2p
-            .persistent_peers
-            .push(Multiaddr::from_str(&public_ip_string).unwrap());
-    }
-    #[cfg(feature = "malachite")]
-    if let Some(position) = bft_config
-        .consensus
-        .p2p
-        .persistent_peers
-        .iter()
-        .position(|x| *x == Multiaddr::from_str(&public_ip_string).unwrap())
-    {
-        bft_config.consensus.p2p.persistent_peers.remove(position);
-    }
-
-    //bft_config.consensus.p2p.transport = mconfig::TransportProtocol::Quic;
-    #[cfg(feature = "malachite")]
-    if let Some(listen_addr) = &config.listen_address {
-        bft_config.consensus.p2p.listen_addr = Multiaddr::from_str(listen_addr).unwrap();
-    } else {
-        {
-            bft_config.consensus.p2p.listen_addr = Multiaddr::from_str(&format!(
-                "/ip4/127.0.0.1/tcp/{}",
-                45869 + rand::random::<u32>() % 1000
-            ))
-            .unwrap();
-        }
-    }
-
-    bft_config.consensus.p2p.discovery = mconfig::DiscoveryConfig {
-        selector: mconfig::Selector::Random,
-        bootstrap_protocol: mconfig::BootstrapProtocol::Full,
-        num_outbound_peers: 10,
-        num_inbound_peers: 30,
-        max_connections_per_peer: 30,
-        ephemeral_connection_timeout: Duration::from_secs(10),
-        enabled: true,
-    };
-
-    info!(?bft_config);
-
-    #[cfg(feature = "malachite")]
-    let mut malachite_system = None;
-    #[cfg(feature = "malachite")]
-    if !*TEST_MODE.lock().unwrap() {
-        let internal = internal_handle.internal.lock().await;
-        let mut return_validator_list_because_of_malachite_bug =
-            internal.validators_at_current_height.clone();
-        if return_validator_list_because_of_malachite_bug
-            .iter()
-            .position(|v| v.address.0 == internal.my_public_key)
-            .is_none()
-        {
-            return_validator_list_because_of_malachite_bug.push(MalValidator {
-                address: MalPublicKey2(internal.my_public_key),
-                public_key: internal.my_public_key,
-                voting_power: 0,
-            });
-        }
-        drop(internal);
-        malachite_system = Some(
-            start_malachite_with_start_delay(
-                internal_handle.clone(),
-                1,
-                return_validator_list_because_of_malachite_bug,
-                my_private_key,
-                bft_config.clone(),
-                Duration::from_secs(0),
-            )
-            .await,
-        );
-    }
-
-    #[cfg(not(feature = "malachite"))]
     {
         use tenderlink::{SecureUdpEndpoint, StaticDHKeyPair};
 
@@ -1432,12 +1242,6 @@ async fn tfl_service_main_loop(internal_handle: TFLServiceHandle) -> Result<(), 
     let mut last_diagnostic_print = Instant::now();
     let mut current_bc_tip: Option<(BlockHeight, BlockHash)> = None;
 
-    #[cfg(feature = "malachite")]
-    {
-        let mut internal = internal_handle.internal.lock().await;
-        internal.malachite_watchdog = Instant::now();
-    }
-
     loop {
         // Calculate this prior to message handling so that handlers can use it:
         let new_bc_tip = if let Ok(StateResponse::Tip(val)) = (call.state)(StateRequest::Tip).await
@@ -1450,49 +1254,10 @@ async fn tfl_service_main_loop(internal_handle: TFLServiceHandle) -> Result<(), 
         tokio::time::sleep_until(run_instant).await;
         run_instant += MAIN_LOOP_SLEEP_INTERVAL;
 
-        // We need this to allow the malachite system to restart itself internally.
-        #[cfg(feature = "malachite")]
-        if let Some(ms) = &mut malachite_system {
-            if ms.lock().await.should_terminate {
-                malachite_system = None;
-            }
-        }
-
         // from this point onwards we must race to completion in order to avoid stalling incoming requests
         // NOTE: split to avoid deadlock from non-recursive mutex - can we reasonably change type?
         #[allow(unused_mut)]
         let mut internal = internal_handle.internal.lock().await;
-
-        #[cfg(feature = "malachite")]
-        if malachite_system.is_some() && internal.malachite_watchdog.elapsed().as_secs() > 120 {
-            error!("Malachite Watchdog triggered, restarting subsystem...");
-            let start_delay = Duration::from_secs(rand::rngs::OsRng.next_u64() % 10 + 20);
-            let mut return_validator_list_because_of_malachite_bug =
-                internal.validators_at_current_height.clone();
-            if return_validator_list_because_of_malachite_bug
-                .iter()
-                .position(|v| v.address.0 == internal.my_public_key)
-                .is_none()
-            {
-                return_validator_list_because_of_malachite_bug.push(MalValidator {
-                    address: MalPublicKey2(internal.my_public_key),
-                    public_key: internal.my_public_key,
-                    voting_power: 0,
-                });
-            }
-            malachite_system = Some(
-                start_malachite_with_start_delay(
-                    internal_handle.clone(),
-                    internal.bft_blocks.len() as u64 + 1, // The next block malachite should produce
-                    return_validator_list_because_of_malachite_bug,
-                    my_private_key,
-                    bft_config.clone(),
-                    start_delay,
-                )
-                .await,
-            );
-            internal.malachite_watchdog = Instant::now() + start_delay;
-        }
 
         // Check TFL is activated before we do anything that assumes it
         if !internal.tfl_is_activated {
@@ -1526,80 +1291,6 @@ async fn tfl_service_main_loop(internal_handle: TFLServiceHandle) -> Result<(), 
         }
 
         current_bc_tip = new_bc_tip;
-    }
-}
-
-struct BFTNode {
-    private_key: MalPrivateKey,
-}
-
-#[derive(Clone, Copy, Debug)]
-struct DummyHandle;
-
-#[async_trait]
-impl malachitebft_app_channel::app::node::NodeHandle<MalContext> for DummyHandle {
-    fn subscribe(&self) -> RxEvent<MalContext> {
-        panic!();
-    }
-
-    async fn kill(&self, _reason: Option<String>) -> eyre::Result<()> {
-        panic!();
-    }
-}
-
-static TEMP_DIR_FOR_WAL: std::sync::Mutex<Option<TempDir>> = std::sync::Mutex::new(None);
-
-#[async_trait]
-impl malachitebft_app_channel::app::node::Node for BFTNode {
-    type Context = MalContext;
-    type Genesis = ();
-    type PrivateKeyFile = ();
-    type SigningProvider = MalEd25519Provider;
-    type NodeHandle = DummyHandle;
-
-    fn get_home_dir(&self) -> std::path::PathBuf {
-        let mut td = TEMP_DIR_FOR_WAL.lock().unwrap();
-        std::path::PathBuf::from(td.as_ref().unwrap().path())
-    }
-
-    fn get_address(&self, pk: &MalPublicKey) -> MalPublicKey2 {
-        MalPublicKey2(pk.clone())
-    }
-
-    fn get_public_key(&self, pk: &MalPrivateKey) -> MalPublicKey {
-        pk.into()
-    }
-
-    fn get_keypair(&self, pk: MalPrivateKey) -> MalKeyPair {
-        MalKeyPair::ed25519_from_bytes(pk.as_ref().to_vec()).unwrap()
-    }
-
-    fn load_private_key(&self, _file: ()) -> MalPrivateKey {
-        self.private_key.clone()
-    }
-
-    fn load_private_key_file(&self) -> Result<(), eyre::ErrReport> {
-        Ok(())
-    }
-
-    fn get_signing_provider(&self, private_key: MalPrivateKey) -> Self::SigningProvider {
-        MalEd25519Provider::new(private_key)
-    }
-
-    fn load_genesis(&self) -> Result<Self::Genesis, eyre::ErrReport> {
-        Ok(())
-    }
-
-    async fn start(&self) -> eyre::Result<DummyHandle> {
-        Ok(DummyHandle)
-    }
-
-    async fn run(self) -> eyre::Result<()> {
-        Ok(())
-    }
-    type Config = BFTConfig;
-    fn load_config(&self) -> eyre::Result<Self::Config> {
-        panic!()
     }
 }
 
@@ -2030,38 +1721,313 @@ async fn _tfl_dump_block_sequence(
     tfl_dump_blocks(&blocks[..], &infos[..]);
 }
 
-/// Malachite configuration options
-#[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
-pub struct BFTConfig {
-    /// A custom human-readable name for this node
-    pub moniker: String,
 
-    /// Log configuration options
-    pub logging: mconfig::LoggingConfig,
-
-    /// Consensus configuration options
-    pub consensus: mconfig::ConsensusConfig,
-
-    /// ValueSync configuration options
-    pub value_sync: mconfig::ValueSyncConfig,
-
-    /// Metrics configuration options
-    pub metrics: mconfig::MetricsConfig,
-
-    /// Runtime configuration options
-    pub runtime: mconfig::RuntimeConfig,
+/// A validator is a public key and voting power
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MalValidator {
+    pub address: MalPublicKey2,
+    pub public_key: MalPublicKey,
+    pub voting_power: u64,
 }
 
-impl NodeConfig for BFTConfig {
-    fn moniker(&self) -> &str {
-        &self.moniker
+impl MalValidator {
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    pub fn new(public_key: MalPublicKey, voting_power: u64) -> Self {
+        Self {
+            address: MalPublicKey2(public_key),
+            public_key,
+            voting_power,
+        }
+    }
+}
+
+impl PartialOrd for MalValidator {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for MalValidator {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.address.cmp(&other.address)
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct MalPublicKey2(pub MalPublicKey);
+
+impl std::fmt::Display for MalPublicKey2 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for byte in self.0.as_ref() {
+            write!(f, "{:02X}", byte)?;
+        }
+        Ok(())
+    }
+}
+
+impl std::fmt::Debug for MalPublicKey2 {
+    #[cfg_attr(coverage_nightly, coverage(off))]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+/// A bundle of signed votes for a block
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)] //, serde::Serialize, serde::Deserialize)]
+pub struct FatPointerToBftBlock2 {
+    pub vote_for_block_without_finalizer_public_key: [u8; 76 - 32],
+    pub signatures: Vec<FatPointerSignature2>,
+}
+
+impl std::fmt::Display for FatPointerToBftBlock2 {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{{hash:")?;
+        for b in &self.vote_for_block_without_finalizer_public_key[0..32] {
+            write!(f, "{:02x}", b)?;
+        }
+        write!(f, " ovd:")?;
+        for b in &self.vote_for_block_without_finalizer_public_key[32..] {
+            write!(f, "{:02x}", b)?;
+        }
+        write!(f, " signatures:[")?;
+        for (i, s) in self.signatures.iter().enumerate() {
+            write!(f, "{{pk:")?;
+            for b in s.public_key {
+                write!(f, "{:02x}", b)?;
+            }
+            write!(f, " sig:")?;
+            for b in s.vote_signature {
+                write!(f, "{:02x}", b)?;
+            }
+            write!(f, "}}")?;
+            if i + 1 < self.signatures.len() {
+                write!(f, " ")?;
+            }
+        }
+        write!(f, "]}}")?;
+        Ok(())
+    }
+}
+
+impl From<tenderlink::FatPointerToBftBlock3> for FatPointerToBftBlock2 {
+    fn from(fat_pointer: tenderlink::FatPointerToBftBlock3) -> FatPointerToBftBlock2 {
+        FatPointerToBftBlock2 {
+            vote_for_block_without_finalizer_public_key: fat_pointer
+                .vote_for_block_without_finalizer_public_key,
+            signatures: fat_pointer
+                .signatures
+                .into_iter()
+                .map(|s| FatPointerSignature2 {
+                    public_key: s.public_key,
+                    vote_signature: s.vote_signature,
+                })
+                .collect(),
+        }
+    }
+}
+
+impl FatPointerToBftBlock2 {
+    pub fn to_non_two(self) -> zebra_chain::block::FatPointerToBftBlock {
+        zebra_chain::block::FatPointerToBftBlock {
+            vote_for_block_without_finalizer_public_key: self
+                .vote_for_block_without_finalizer_public_key,
+            signatures: self
+                .signatures
+                .into_iter()
+                .map(|two| zebra_chain::block::FatPointerSignature {
+                    public_key: two.public_key,
+                    vote_signature: two.vote_signature,
+                })
+                .collect(),
+        }
     }
 
-    fn consensus(&self) -> &mconfig::ConsensusConfig {
-        &self.consensus
+    pub fn null() -> FatPointerToBftBlock2 {
+        FatPointerToBftBlock2 {
+            vote_for_block_without_finalizer_public_key: [0_u8; 76 - 32],
+            signatures: Vec::new(),
+        }
     }
 
-    fn value_sync(&self) -> &mconfig::ValueSyncConfig {
-        &self.value_sync
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut buf = Vec::new();
+        buf.extend_from_slice(&self.vote_for_block_without_finalizer_public_key);
+        buf.extend_from_slice(&(self.signatures.len() as u16).to_le_bytes());
+        for s in &self.signatures {
+            buf.extend_from_slice(&s.to_bytes());
+        }
+        buf
+    }
+    #[allow(clippy::reversed_empty_ranges)]
+    pub fn try_from_bytes(bytes: &Vec<u8>) -> Option<FatPointerToBftBlock2> {
+        if bytes.len() < 76 - 32 + 2 {
+            return None;
+        }
+        let vote_for_block_without_finalizer_public_key = bytes[0..76 - 32].try_into().unwrap();
+        let len = u16::from_le_bytes(bytes[76 - 32..2].try_into().unwrap()) as usize;
+
+        if 76 - 32 + 2 + len * (32 + 64) > bytes.len() {
+            return None;
+        }
+        let rem = &bytes[76 - 32 + 2..];
+        let signatures = rem
+            .chunks_exact(32 + 64)
+            .map(|chunk| FatPointerSignature2::from_bytes(chunk.try_into().unwrap()))
+            .collect();
+
+        Some(Self {
+            vote_for_block_without_finalizer_public_key,
+            signatures,
+        })
+    }
+
+    pub fn get_vote_template(&self) -> MalVote {
+        let mut vote_bytes = [0_u8; 76];
+        vote_bytes[32..76].copy_from_slice(&self.vote_for_block_without_finalizer_public_key);
+        MalVote::from_bytes(&vote_bytes)
+    }
+    pub fn inflate(&self) -> Vec<(MalVote, ed25519_zebra::ed25519::SignatureBytes)> {
+        let vote_template = self.get_vote_template();
+        self.signatures
+            .iter()
+            .map(|s| {
+                let mut vote = vote_template.clone();
+                vote.validator_address = MalPublicKey2(MalPublicKey::from(s.public_key));
+                (vote, s.vote_signature)
+            })
+            .collect()
+    }
+    pub fn validate_signatures(&self) -> bool {
+        let mut batch = ed25519_zebra::batch::Verifier::new();
+        for (vote, signature) in self.inflate() {
+            let vk_bytes = ed25519_zebra::VerificationKeyBytes::from(vote.validator_address.0);
+            let sig = ed25519_zebra::Signature::from_bytes(&signature);
+            let msg = vote.to_bytes();
+
+            batch.queue((vk_bytes, sig, &msg));
+        }
+        batch.verify(rand::thread_rng()).is_ok()
+    }
+    pub fn points_at_block_hash(&self) -> Blake3Hash {
+        Blake3Hash(
+            self.vote_for_block_without_finalizer_public_key[0..32]
+                .try_into()
+                .unwrap(),
+        )
+    }
+}
+
+use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+use std::io;
+
+impl ZcashSerialize for FatPointerToBftBlock2 {
+    fn zcash_serialize<W: io::Write>(&self, mut writer: W) -> Result<(), io::Error> {
+        writer.write_all(&self.vote_for_block_without_finalizer_public_key)?;
+        writer.write_u16::<LittleEndian>(self.signatures.len() as u16)?;
+        for signature in &self.signatures {
+            writer.write_all(&signature.to_bytes())?;
+        }
+        Ok(())
+    }
+}
+
+impl ZcashDeserialize for FatPointerToBftBlock2 {
+    fn zcash_deserialize<R: io::Read>(mut reader: R) -> Result<Self, SerializationError> {
+        let mut vote_for_block_without_finalizer_public_key = [0u8; 76 - 32];
+        reader.read_exact(&mut vote_for_block_without_finalizer_public_key)?;
+
+        let len = reader.read_u16::<LittleEndian>()?;
+        let mut signatures: Vec<FatPointerSignature2> = Vec::with_capacity(len.into());
+        for _ in 0..len {
+            let mut signature_bytes = [0u8; 32 + 64];
+            reader.read_exact(&mut signature_bytes)?;
+            signatures.push(FatPointerSignature2::from_bytes(&signature_bytes));
+        }
+
+        Ok(FatPointerToBftBlock2 {
+            vote_for_block_without_finalizer_public_key,
+            signatures,
+        })
+    }
+}
+
+/// A vote signature for a block
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)] //, serde::Serialize, serde::Deserialize)]
+pub struct FatPointerSignature2 {
+    pub public_key: [u8; 32],
+    pub vote_signature: [u8; 64],
+}
+
+impl FatPointerSignature2 {
+    pub fn to_bytes(&self) -> [u8; 32 + 64] {
+        let mut buf = [0_u8; 32 + 64];
+        buf[0..32].copy_from_slice(&self.public_key);
+        buf[32..32 + 64].copy_from_slice(&self.vote_signature);
+        buf
+    }
+    pub fn from_bytes(bytes: &[u8; 32 + 64]) -> FatPointerSignature2 {
+        Self {
+            public_key: bytes[0..32].try_into().unwrap(),
+            vote_signature: bytes[32..32 + 64].try_into().unwrap(),
+        }
+    }
+}
+
+
+/// A vote for a value in a round
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct MalVote {
+    pub validator_address: MalPublicKey2,
+    pub value: Blake3Hash,
+    pub height: u64,
+    pub typ: bool, // true is commit
+    pub round: i32,
+}
+
+/*
+DATA LAYOUT FOR VOTE
+32 byte ed25519 public key of the finalizer who's vote this is
+32 byte blake3 hash of value, or all zeroes to indicate Nil vote
+8 byte height
+4 byte round where MSB is used to indicate is_commit for the vote type. 1 bit is_commit, 31 bits round index
+
+TOTAL: 76 B
+
+A signed vote will be this same layout followed by the 64 byte ed25519 signature of the previous 76 bytes.
+*/
+
+impl MalVote {
+    pub fn to_bytes(&self) -> [u8; 76] {
+        let mut buf = [0_u8; 76];
+        buf[0..32].copy_from_slice(self.validator_address.0.as_ref());
+        buf[32..64].copy_from_slice(&self.value.0);
+        buf[64..72].copy_from_slice(&self.height.to_le_bytes());
+
+        let mut merged_round_val: u32 = (self.round & 0x7fff_ffff) as u32;
+        if self.typ {
+            merged_round_val |= 0x8000_0000;
+        }
+        buf[72..76].copy_from_slice(&merged_round_val.to_le_bytes());
+        buf
+    }
+    pub fn from_bytes(bytes: &[u8; 76]) -> MalVote {
+        let validator_address =
+            MalPublicKey2(From::<[u8; 32]>::from(bytes[0..32].try_into().unwrap()));
+        let value_hash_bytes = bytes[32..64].try_into().unwrap();
+        let value = Blake3Hash(value_hash_bytes);
+        let height = u64::from_le_bytes(bytes[64..72].try_into().unwrap());
+
+        let merged_round_val = u32::from_le_bytes(bytes[72..76].try_into().unwrap());
+
+        let typ = merged_round_val & 0x8000_0000 != 0;
+        let round = (merged_round_val & 0x7fff_ffff) as i32;
+
+        MalVote {
+            validator_address,
+            value,
+            height,
+            typ,
+            round,
+        }
     }
 }
