@@ -62,8 +62,7 @@ use zcash_primitives::consensus::Parameters;
 use zebra_chain::{
     amount::{self, Amount, NegativeAllowed, NonNegative},
     block::{
-        self, Block, Commitment, FatPointerToBftBlock, Height, SerializedBlock,
-        TryIntoHeight,
+        self, Block, Commitment, FatPointerToBftBlock, Height, SerializedBlock, TryIntoHeight,
     },
     chain_sync_status::ChainSyncStatus,
     chain_tip::{ChainTip, NetworkChainTipHeightEstimator},
@@ -87,9 +86,7 @@ use zebra_chain::{
 use zebra_consensus::{funding_stream_address, ParameterCheckpoint, RouterError};
 use zebra_network::{address_book_peers::AddressBookPeers, PeerSocketAddr};
 use zebra_node_services::mempool;
-use zebra_state::crosslink::{
-    TFLBlockFinality, TFLServiceRequest, TFLServiceResponse,
-};
+use zebra_state::crosslink::{TFLBlockFinality, TFLServiceRequest, TFLServiceResponse};
 use zebra_state::{HashOrHeight, OutputLocation, ReadRequest, ReadResponse, TransactionLocation};
 
 use crate::{
@@ -132,7 +129,6 @@ use types::{
     z_validate_address::ZValidateAddressResponse,
     zec::Zec,
 };
-
 
 #[cfg(test)]
 mod tests;
@@ -1817,7 +1813,10 @@ where
         if let Ok(TFLServiceResponse::Roster(roster)) = ret {
             let mut new_roster = Vec::with_capacity(roster.len());
             for (id, stake) in &roster {
-                new_roster.push(TFLStakerZec(*id, Zec::from(Amount::new(i64::try_from(*stake).ok()?))));
+                new_roster.push(TFLStakerZec(
+                    *id,
+                    Zec::from(Amount::new(i64::try_from(*stake).ok()?)),
+                ));
             }
             Some(new_roster)
         } else {
@@ -1876,9 +1875,11 @@ where
         {
             Ok(TFLServiceResponse::StakingCmd) => Ok(cmd),
             Ok(_) => unreachable!("unmatched response to a `StakingCmd` request"),
-            Err(err) => Err(ErrorObject::owned(server::error::LegacyCode::Verify.into(),
-                    format!("staking command \"{cmd}\" failed: {err}"),
-                    None::<()>)),
+            Err(err) => Err(ErrorObject::owned(
+                server::error::LegacyCode::Verify.into(),
+                format!("staking command \"{cmd}\" failed: {err}"),
+                None::<()>,
+            )),
         }
     }
 

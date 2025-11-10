@@ -11,7 +11,10 @@ use reddsa::{orchard::Binding, orchard::SpendAuth, Signature};
 use crate::{
     amount,
     block::MAX_BLOCK_BYTES,
-    parameters::{OVERWINTER_VERSION_GROUP_ID, SAPLING_VERSION_GROUP_ID, TX_V5_VERSION_GROUP_ID, TX_VCROSSLINK_VERSION_GROUP_ID},
+    parameters::{
+        OVERWINTER_VERSION_GROUP_ID, SAPLING_VERSION_GROUP_ID, TX_V5_VERSION_GROUP_ID,
+        TX_VCROSSLINK_VERSION_GROUP_ID,
+    },
     primitives::{Halo2Proof, ZkSnarkProof},
     serialization::{
         zcash_deserialize_external_count, zcash_serialize_empty_list,
@@ -1060,7 +1063,8 @@ impl ZcashDeserialize for Transaction {
                 // `proofsOrchard`, `vSpendAuthSigsOrchard`, and `bindingSigOrchard`.
                 let orchard_shielded_data = (&mut limited_reader).zcash_deserialize_into()?;
 
-                let staking_action = zcash_primitives::transaction::StakingAction::read(&mut limited_reader)?;
+                let staking_action =
+                    zcash_primitives::transaction::StakingAction::read(&mut limited_reader)?;
 
                 Ok(Transaction::VCrosslink {
                     network_upgrade,

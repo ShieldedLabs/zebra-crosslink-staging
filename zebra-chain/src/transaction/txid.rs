@@ -58,7 +58,6 @@ impl<'a> TxIdBuilder<'a> {
         self.txid_v5()
     }
 
-
     /// Passthrough to txid_v5/librustzcash for VCrosslink transactions.
     fn txid_vcrosslink(self) -> Option<Hash> {
         self.txid_v5()

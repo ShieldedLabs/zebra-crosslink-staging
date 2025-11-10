@@ -46,8 +46,7 @@ use crate::{
     block, orchard,
     parameters::{
         Network, NetworkUpgrade, OVERWINTER_VERSION_GROUP_ID, SAPLING_VERSION_GROUP_ID,
-        TX_V5_VERSION_GROUP_ID,
-        TX_VCROSSLINK_VERSION_GROUP_ID,
+        TX_V5_VERSION_GROUP_ID, TX_VCROSSLINK_VERSION_GROUP_ID,
     },
     primitives::{ed25519, Bctv14Proof, Groth16Proof},
     sapling,
@@ -225,7 +224,7 @@ impl fmt::Display for Transaction {
 
         fmter.field("unmined_id", &self.unmined_id());
 
-        if let Transaction::VCrosslink{ staking_action, .. } = self {
+        if let Transaction::VCrosslink { staking_action, .. } = self {
             fmter.field("staking_action", staking_action);
         }
 
@@ -309,8 +308,7 @@ impl Transaction {
             | Transaction::V2 { .. }
             | Transaction::V3 { .. }
             | Transaction::V4 { .. } => None,
-            Transaction::V5 { .. }
-            | Transaction::VCrosslink { .. } => Some(AuthDigest::from(self)),
+            Transaction::V5 { .. } | Transaction::VCrosslink { .. } => Some(AuthDigest::from(self)),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { .. } => Some(AuthDigest::from(self)),
         }
@@ -552,9 +550,12 @@ impl Transaction {
             | Transaction::V2 { .. }
             | Transaction::V3 { .. }
             | Transaction::V4 { .. } => None,
-            Transaction::V5 { network_upgrade, .. }
-            | Transaction::VCrosslink { network_upgrade, .. } =>
-                Some(*network_upgrade),
+            Transaction::V5 {
+                network_upgrade, ..
+            }
+            | Transaction::VCrosslink {
+                network_upgrade, ..
+            } => Some(*network_upgrade),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 {
                 network_upgrade, ..

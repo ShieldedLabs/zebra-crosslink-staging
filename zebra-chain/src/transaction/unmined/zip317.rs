@@ -138,7 +138,7 @@ pub fn conventional_fee_weight_ratio(
 ///
 /// [ZIP-317]: https://zips.z.cash/zip-0317#fee-calculation
 pub fn conventional_actions(transaction: &Transaction) -> u32 {
-    if let Transaction::VCrosslink{ staking_action, .. } = transaction {
+    if let Transaction::VCrosslink { staking_action, .. } = transaction {
         // TODO: ensure this is consistent with ZIP-317
         return if staking_action.is_none() {
             0

@@ -10,11 +10,13 @@ use color_eyre::install;
 
 use async_trait::async_trait;
 use strum::{EnumCount, IntoEnumIterator};
-use strum_macros::{EnumIter, EnumCount};
+use strum_macros::{EnumCount, EnumIter};
 
 use tenderlink::SortedRosterMember;
-use zcash_primitives::transaction::{ StakingAction, StakingActionKind };
-use zebra_chain::serialization::{SerializationError, ZcashDeserialize, ZcashDeserializeInto, ZcashSerialize};
+use zcash_primitives::transaction::{StakingAction, StakingActionKind};
+use zebra_chain::serialization::{
+    SerializationError, ZcashDeserialize, ZcashDeserializeInto, ZcashSerialize,
+};
 use zebra_state::crosslink::*;
 
 use multiaddr::Multiaddr;
@@ -134,8 +136,8 @@ use crate::service::{TFLServiceCalls, TFLServiceHandle};
 use zebra_chain::block::{
     Block, CountedHeader, Hash as BlockHash, Header as BlockHeader, Height as BlockHeight,
 };
-use zebra_state::{crosslink::*, Request as StateRequest, Response as StateResponse};
 use zebra_node_services::mempool::{Request as MempoolRequest, Response as MempoolResponse};
+use zebra_state::{crosslink::*, Request as StateRequest, Response as StateResponse};
 
 /// Placeholder activation height for Crosslink functionality
 pub const TFL_ACTIVATION_HEIGHT: BlockHeight = BlockHeight(2000);
@@ -351,9 +353,7 @@ async fn push_new_bft_msg_flags(
     internal.bft_err_flags |= bft_err_flags;
 }
 
-async fn propose_new_bft_block(
-    tfl_handle: &TFLServiceHandle,
-) -> Option<BftBlock> {
+async fn propose_new_bft_block(tfl_handle: &TFLServiceHandle) -> Option<BftBlock> {
     #[cfg(feature = "viz_gui")]
     if let Some(state) = viz::VIZ_G.lock().unwrap().as_ref() {
         if state.bft_pause_button {
@@ -725,8 +725,7 @@ async fn new_decided_bft_block_from_malachite(
                     if cmd_c > 0 {
                         info!(
                             "Applied {} commands to roster from PoW height {}",
-                            cmd_c,
-                            new_final_height_hashes[i].0 .0,
+                            cmd_c, new_final_height_hashes[i].0 .0,
                         );
                     }
                 } else {
@@ -946,8 +945,11 @@ pub fn run_tfl_test(internal_handle: TFLServiceHandle) {
     tokio::task::spawn(test_format::instr_reader(internal_handle));
 }
 
-async fn push_staking_action_from_cmd_str(call: &TFLServiceCalls, cmd_str: &str) -> Result<(), String> {
-    use zebra_chain::transaction::{ LockTime, Transaction, UnminedTx };
+async fn push_staking_action_from_cmd_str(
+    call: &TFLServiceCalls,
+    cmd_str: &str,
+) -> Result<(), String> {
+    use zebra_chain::transaction::{LockTime, Transaction, UnminedTx};
     let staking_action = zcash_primitives::transaction::StakingAction::parse_from_cmd(cmd_str)?;
     let tx: UnminedTx = Transaction::VCrosslink {
         // TODO(@prod): determine from network/height
@@ -959,7 +961,8 @@ async fn push_staking_action_from_cmd_str(call: &TFLServiceCalls, cmd_str: &str)
         orchard_shielded_data: None,
         expiry_height: BlockHeight(0), // "don't expire"
         staking_action,
-    }.into();
+    }
+    .into();
 
     if let Ok(MempoolResponse::Queued(receivers)) =
         (call.mempool)(MempoolRequest::Queue(vec![tx.into()])).await
@@ -970,33 +973,58 @@ async fn push_staking_action_from_cmd_str(call: &TFLServiceCalls, cmd_str: &str)
                 Ok(receiver) => match receiver.await {
                     Err(err) => return Err(format!("tried to await command transaction: {err}")),
                     Ok(result) => match result {
-                        Err(err) => return Err(format!("unsuccessfully mempooled transaction: {err}")),
+                        Err(err) => {
+                            return Err(format!("unsuccessfully mempooled transaction: {err}"))
+                        }
                         Ok(()) => {}
-                    }
-                }
+                    },
+                },
             }
         }
     }
     Ok(())
 }
 
-fn update_roster_for_cmd(roster: &mut Vec<MalValidator>, validators_keys_to_names: &mut HashMap<MalPublicKey, String>, action: &StakingAction) -> usize {
+fn update_roster_for_cmd(
+    roster: &mut Vec<MalValidator>,
+    validators_keys_to_names: &mut HashMap<MalPublicKey, String>,
+    action: &StakingAction,
+) -> usize {
     // TODO: what is allowed in terms of multiple staking action in 1 command?
     // Any subtract is serially dependent
 
     let (has_add, sub_key_name, is_clear) = match action.kind {
-        StakingActionKind::Add       => (true,  None,                                                false),
-        StakingActionKind::Sub       => (false, Some((action.target, &action.insecure_target_name)), false),
-        StakingActionKind::Clear     => (false, Some((action.target, &action.insecure_target_name)), true),
-        StakingActionKind::Move      => (true,  Some((action.source, &action.insecure_source_name)), false),
-        StakingActionKind::MoveClear => (true,  Some((action.source, &action.insecure_source_name)), true),
+        StakingActionKind::Add => (true, None, false),
+        StakingActionKind::Sub => (
+            false,
+            Some((action.target, &action.insecure_target_name)),
+            false,
+        ),
+        StakingActionKind::Clear => (
+            false,
+            Some((action.target, &action.insecure_target_name)),
+            true,
+        ),
+        StakingActionKind::Move => (
+            true,
+            Some((action.source, &action.insecure_source_name)),
+            false,
+        ),
+        StakingActionKind::MoveClear => (
+            true,
+            Some((action.source, &action.insecure_source_name)),
+            true,
+        ),
     };
 
     let mut amount = action.val;
     if let Some((sub_key, sub_name)) = sub_key_name {
         let sub_key = MalPublicKey2(sub_key.into());
         let Some(member) = roster.iter_mut().find(|cmp| cmp.public_key == sub_key.0) else {
-            warn!("Roster command invalid: can't subtract from non-present finalizer \"{}\"", sub_name);
+            warn!(
+                "Roster command invalid: can't subtract from non-present finalizer \"{}\"",
+                sub_name
+            );
             return 0;
         };
 
@@ -1039,7 +1067,9 @@ fn update_roster_for_block(internal: &mut TFLServiceInternal, block: &Block) -> 
 
     for tx in &block.transactions {
         let mut is_cmd = 0;
-        if let zebra_chain::transaction::Transaction::VCrosslink{staking_action, ..} = tx.as_ref() {
+        if let zebra_chain::transaction::Transaction::VCrosslink { staking_action, .. } =
+            tx.as_ref()
+        {
             if let Some(staking_action) = staking_action {
                 cmd_c += update_roster_for_cmd(roster, validators_keys_to_names, &staking_action);
             }
@@ -1406,7 +1436,11 @@ async fn tfl_service_incoming_request(
 
         TFLServiceRequest::Roster => Ok(TFLServiceResponse::Roster({
             let internal = internal_handle.internal.lock().await;
-            internal.validators_at_current_height.iter().map(|v| (<[u8; 32]>::from(v.public_key), v.voting_power)).collect()
+            internal
+                .validators_at_current_height
+                .iter()
+                .map(|v| (<[u8; 32]>::from(v.public_key), v.voting_power))
+                .collect()
         })),
 
         TFLServiceRequest::FatPointerToBFTChainTip => {
@@ -1721,7 +1755,6 @@ async fn _tfl_dump_block_sequence(
     tfl_dump_blocks(&blocks[..], &infos[..]);
 }
 
-
 /// A validator is a public key and voting power
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MalValidator {
@@ -1972,7 +2005,6 @@ impl FatPointerSignature2 {
         }
     }
 }
-
 
 /// A vote for a value in a round
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]

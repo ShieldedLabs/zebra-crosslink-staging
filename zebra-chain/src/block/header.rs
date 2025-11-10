@@ -24,14 +24,16 @@ pub use zcash_primitives::transaction::CommandBuf;
 pub struct CommandBuf2(pub CommandBuf);
 impl serde::Serialize for CommandBuf2 {
     fn serialize<S>(&self, s: S) -> Result<S::Ok, S::Error>
-    where S: serde::Serializer
+    where
+        S: serde::Serializer,
     {
         s.serialize_str(self.0.to_str())
     }
 }
 impl<'d> serde::Deserialize<'d> for CommandBuf2 {
     fn deserialize<S>(s: S) -> Result<Self, S::Error>
-    where S: serde::Deserializer<'d>
+    where
+        S: serde::Deserializer<'d>,
     {
         Ok(CommandBuf2(CommandBuf::from_str(<&str>::deserialize(s)?)))
     }
@@ -106,7 +108,6 @@ pub struct Header {
 
     /// Crosslink fat pointer to PoS block.
     pub fat_pointer_to_bft_block: FatPointerToBftBlock,
-
     // A command string used during development.
     // pub temp_command_buf: CommandBuf2,
 }

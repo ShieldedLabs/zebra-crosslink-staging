@@ -19,8 +19,8 @@ use tracing::{error, info, warn};
 
 use zebra_chain::block::{Hash as BlockHash, Height as BlockHeight};
 use zebra_chain::transaction::Hash as TxHash;
-use zebra_state::{crosslink::*, Request as StateRequest, Response as StateResponse};
 use zebra_node_services::mempool::{Request as MempoolRequest, Response as MempoolResponse};
+use zebra_state::{crosslink::*, Request as StateRequest, Response as StateResponse};
 
 use crate::chain::BftBlock;
 use crate::FatPointerToBftBlock2;
@@ -66,8 +66,9 @@ pub(crate) type MempoolServiceProcedure = Arc<
             MempoolRequest,
         ) -> Pin<
             Box<
-                dyn Future<Output = Result<MempoolResponse, Box<dyn std::error::Error + Send + Sync>>>
-                    + Send,
+                dyn Future<
+                        Output = Result<MempoolResponse, Box<dyn std::error::Error + Send + Sync>>,
+                    > + Send,
             >,
         > + Send
         + Sync,

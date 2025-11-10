@@ -17,4 +17,5 @@ pub const TX_V5_VERSION_GROUP_ID: u32 = 0x26A7_270A;
 pub const TX_V6_VERSION_GROUP_ID: u32 = 0xFFFF_FFFF;
 
 /// In-development crosslink ID
-pub const TX_VCROSSLINK_VERSION_GROUP_ID: u32 = zcash_protocol::constants::VCROSSLINK_VERSION_GROUP_ID;
+pub const TX_VCROSSLINK_VERSION_GROUP_ID: u32 =
+    zcash_protocol::constants::VCROSSLINK_VERSION_GROUP_ID;
