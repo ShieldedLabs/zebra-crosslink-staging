@@ -38,6 +38,7 @@ let
 
   flakelib = {
     nixpkgs = pkgs;
+    crane-dev-shell = crane-lib.devShell;
 
     # select-source :: {
     #   name :: String,
