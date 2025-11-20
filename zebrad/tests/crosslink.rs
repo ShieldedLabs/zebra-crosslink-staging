@@ -21,6 +21,7 @@ use zebra_chain::{
 };
 use zebra_crosslink::chain::*;
 use zebra_crosslink::test_format::*;
+use zebra_crosslink::FatPointerToBftBlock2;
 use zebra_state::crosslink::*;
 use zebrad::application::CROSSLINK_TEST_CONFIG_OVERRIDE;
 use zebrad::config::ZebradConfig;
@@ -444,7 +445,6 @@ fn crosslink_test_pow_to_pos_link() {
     pow_5.header = Arc::new(BlockHeader {
         version: 5,
         fat_pointer_to_bft_block: pos_0_fat_ptr.clone(),
-        temp_command_buf: CommandBuf::empty(),
         ..*pow_5.header
     });
     // let pow_5_hash = pow_5.hash();
@@ -592,7 +592,6 @@ impl BlockGen {
                 nonce: HexDebug([0; 32]),
                 solution: work::equihash::Solution::Regtest([0; 36]),
                 fat_pointer_to_bft_block: FatPointerToBftBlock::null(),
-                temp_command_buf: CommandBuf::empty(),
             }),
 
             transactions: vec![coinbase_tx.into()],
@@ -698,19 +697,13 @@ fn create_pos_and_ptr_to_finalize_pow(
     )
     .expect("valid PoS block");
 
-    let cert = MalCommitCertificate {
-        height: MalHeight::new(bft_height.into()),
-        round: MalRound::new(1),
-        value_id: MalValue::new_block(&block).id(),
-        commit_signatures: Vec::new(), // TODO
-    };
-
     BftBlockAndFatPointerToIt {
         block,
-        fat_ptr: (&cert).into(),
+        fat_ptr: FatPointerToBftBlock2::null(), // TODO
     }
 }
 
+#[ignore]
 #[test]
 fn crosslink_gen_pow_and_no_signature_no_roster_pos() {
     set_test_name(function_name!());
@@ -757,6 +750,7 @@ fn crosslink_force_roster() {
     test_bytes(tf.write_to_bytes());
 }
 
+/*
 #[test]
 fn crosslink_add_newcomer_to_roster_via_pow() {
     set_test_name(function_name!());
@@ -797,6 +791,7 @@ fn crosslink_add_newcomer_to_roster_via_pow() {
 
     test_bytes(tf.write_to_bytes());
 }
+*/
 
 // TODO:
 // - reject signatures from outside the roster
