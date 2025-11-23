@@ -46,7 +46,7 @@ use crate::{
     block, orchard,
     parameters::{
         Network, NetworkUpgrade, OVERWINTER_VERSION_GROUP_ID, SAPLING_VERSION_GROUP_ID,
-        TX_V5_VERSION_GROUP_ID,
+        TX_V5_VERSION_GROUP_ID, TX_VCROSSLINK_VERSION_GROUP_ID,
     },
     primitives::{ed25519, Bctv14Proof, Groth16Proof},
     sapling,
@@ -171,6 +171,30 @@ pub enum Transaction {
         orchard_shielded_data: Option<orchard::ShieldedData>,
         // TODO: Add the rest of the v6 fields.
     },
+    /// In-development crosslink-specific additions to V6
+    VCrosslink {
+        /// The Network Upgrade for this transaction.
+        ///
+        /// Derived from the ConsensusBranchId field.
+        network_upgrade: NetworkUpgrade,
+        /// The earliest time or block height that this transaction can be added to the
+        /// chain.
+        lock_time: LockTime,
+        /// The latest block height that this transaction can be added to the chain.
+        expiry_height: block::Height,
+        /// The transparent inputs to the transaction.
+        inputs: Vec<transparent::Input>,
+        /// The transparent outputs from the transaction.
+        outputs: Vec<transparent::Output>,
+        /// The sapling shielded data for this transaction, if any.
+        sapling_shielded_data: Option<sapling::ShieldedData<sapling::SharedAnchor>>,
+        /// The orchard data for this transaction, if any.
+        orchard_shielded_data: Option<orchard::ShieldedData>,
+
+        /// Crosslink-specific data:
+        staking_action: Option<zcash_primitives::transaction::StakingAction>,
+        // TODO: Add the rest of the v6 fields.
+    },
 }
 
 impl fmt::Display for Transaction {
@@ -199,6 +223,10 @@ impl fmt::Display for Transaction {
         fmter.field("orchard_actions", &self.orchard_actions().count());
 
         fmter.field("unmined_id", &self.unmined_id());
+
+        if let Transaction::VCrosslink { staking_action, .. } = self {
+            fmter.field("staking_action", staking_action);
+        }
 
         fmter.finish()
     }
@@ -280,7 +308,7 @@ impl Transaction {
             | Transaction::V2 { .. }
             | Transaction::V3 { .. }
             | Transaction::V4 { .. } => None,
-            Transaction::V5 { .. } => Some(AuthDigest::from(self)),
+            Transaction::V5 { .. } | Transaction::VCrosslink { .. } => Some(AuthDigest::from(self)),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { .. } => Some(AuthDigest::from(self)),
         }
@@ -374,6 +402,7 @@ impl Transaction {
             Transaction::V3 { .. } | Transaction::V4 { .. } | Transaction::V5 { .. } => true,
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { .. } => true,
+            Transaction::VCrosslink { .. } => true,
         }
     }
 
@@ -397,6 +426,7 @@ impl Transaction {
             Transaction::V5 { .. } => 5,
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { .. } => 6,
+            Transaction::VCrosslink { .. } => 7,
         }
     }
 
@@ -410,6 +440,7 @@ impl Transaction {
             | Transaction::V5 { lock_time, .. } => *lock_time,
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { lock_time, .. } => *lock_time,
+            Transaction::VCrosslink { lock_time, .. } => *lock_time,
         };
 
         // `zcashd` checks that the block height is greater than the lock height.
@@ -459,6 +490,7 @@ impl Transaction {
             | Transaction::V5 { lock_time, .. } => *lock_time,
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { lock_time, .. } => *lock_time,
+            Transaction::VCrosslink { lock_time, .. } => *lock_time,
         };
         let mut lock_time_bytes = Vec::new();
         lock_time
@@ -488,7 +520,8 @@ impl Transaction {
             Transaction::V1 { .. } | Transaction::V2 { .. } => None,
             Transaction::V3 { expiry_height, .. }
             | Transaction::V4 { expiry_height, .. }
-            | Transaction::V5 { expiry_height, .. } => match expiry_height {
+            | Transaction::V5 { expiry_height, .. }
+            | Transaction::VCrosslink { expiry_height, .. } => match expiry_height {
                 // Consensus rule:
                 // > No limit: To set no limit on transactions (so that they do not expire), nExpiryHeight should be set to 0.
                 // https://zips.z.cash/zip-0203#specification
@@ -519,6 +552,9 @@ impl Transaction {
             | Transaction::V4 { .. } => None,
             Transaction::V5 {
                 network_upgrade, ..
+            }
+            | Transaction::VCrosslink {
+                network_upgrade, ..
             } => Some(*network_upgrade),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 {
@@ -539,6 +575,7 @@ impl Transaction {
             Transaction::V5 { ref inputs, .. } => inputs,
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { ref inputs, .. } => inputs,
+            Transaction::VCrosslink { ref inputs, .. } => inputs,
         }
     }
 
@@ -559,6 +596,7 @@ impl Transaction {
             Transaction::V5 { ref outputs, .. } => outputs,
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { ref outputs, .. } => outputs,
+            Transaction::VCrosslink { ref outputs, .. } => outputs,
         }
     }
 
@@ -609,6 +647,7 @@ impl Transaction {
             | Transaction::V5 { .. } => Box::new(std::iter::empty()),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { .. } => Box::new(std::iter::empty()),
+            Transaction::VCrosslink { .. } => Box::new(std::iter::empty()),
         }
     }
 
@@ -646,6 +685,7 @@ impl Transaction {
             | Transaction::V5 { .. } => Box::new(std::iter::empty()),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { .. } => Box::new(std::iter::empty()),
+            Transaction::VCrosslink { .. } => Box::new(std::iter::empty()),
         }
     }
 
@@ -683,6 +723,7 @@ impl Transaction {
             | Transaction::V5 { .. } => 0,
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { .. } => 0,
+            Transaction::VCrosslink { .. } => 0,
         }
     }
 
@@ -724,6 +765,7 @@ impl Transaction {
             | Transaction::V5 { .. } => Box::new(std::iter::empty()),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { .. } => Box::new(std::iter::empty()),
+            Transaction::VCrosslink { .. } => Box::new(std::iter::empty()),
         }
     }
 
@@ -762,6 +804,7 @@ impl Transaction {
             | Transaction::V5 { .. } => None,
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { .. } => None,
+            Transaction::VCrosslink { .. } => None,
         }
     }
 
@@ -772,6 +815,7 @@ impl Transaction {
             Transaction::V1 { .. } | Transaction::V5 { .. } => false,
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { .. } => false,
+            Transaction::VCrosslink { .. } => false,
 
             // JoinSplits-on-BCTV14
             Transaction::V2 { joinsplit_data, .. } | Transaction::V3 { joinsplit_data, .. } => {
@@ -821,6 +865,7 @@ impl Transaction {
             | Transaction::V5 { .. } => Box::new(std::iter::empty()),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { .. } => Box::new(std::iter::empty()),
+            Transaction::VCrosslink { .. } => Box::new(std::iter::empty()),
         }
     }
 
@@ -847,6 +892,10 @@ impl Transaction {
                 sapling_shielded_data: Some(sapling_shielded_data),
                 ..
             } => Box::new(sapling_shielded_data.anchors()),
+            Transaction::VCrosslink {
+                sapling_shielded_data: Some(sapling_shielded_data),
+                ..
+            } => Box::new(sapling_shielded_data.anchors()),
 
             // No Spends
             Transaction::V1 { .. }
@@ -862,6 +911,10 @@ impl Transaction {
             } => Box::new(std::iter::empty()),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 {
+                sapling_shielded_data: None,
+                ..
+            } => Box::new(std::iter::empty()),
+            Transaction::VCrosslink {
                 sapling_shielded_data: None,
                 ..
             } => Box::new(std::iter::empty()),
@@ -895,6 +948,10 @@ impl Transaction {
                 sapling_shielded_data: Some(sapling_shielded_data),
                 ..
             } => Box::new(sapling_shielded_data.spends_per_anchor()),
+            Transaction::VCrosslink {
+                sapling_shielded_data: Some(sapling_shielded_data),
+                ..
+            } => Box::new(sapling_shielded_data.spends_per_anchor()),
 
             // No Spends
             Transaction::V1 { .. }
@@ -910,6 +967,10 @@ impl Transaction {
             } => Box::new(std::iter::empty()),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 {
+                sapling_shielded_data: None,
+                ..
+            } => Box::new(std::iter::empty()),
+            Transaction::VCrosslink {
                 sapling_shielded_data: None,
                 ..
             } => Box::new(std::iter::empty()),
@@ -933,6 +994,10 @@ impl Transaction {
                 sapling_shielded_data: Some(sapling_shielded_data),
                 ..
             } => Box::new(sapling_shielded_data.outputs()),
+            Transaction::VCrosslink {
+                sapling_shielded_data: Some(sapling_shielded_data),
+                ..
+            } => Box::new(sapling_shielded_data.outputs()),
 
             // No Outputs
             Transaction::V1 { .. }
@@ -948,6 +1013,10 @@ impl Transaction {
             } => Box::new(std::iter::empty()),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 {
+                sapling_shielded_data: None,
+                ..
+            } => Box::new(std::iter::empty()),
+            Transaction::VCrosslink {
                 sapling_shielded_data: None,
                 ..
             } => Box::new(std::iter::empty()),
@@ -973,6 +1042,10 @@ impl Transaction {
                 sapling_shielded_data: Some(sapling_shielded_data),
                 ..
             } => Box::new(sapling_shielded_data.nullifiers()),
+            Transaction::VCrosslink {
+                sapling_shielded_data: Some(sapling_shielded_data),
+                ..
+            } => Box::new(sapling_shielded_data.nullifiers()),
 
             // No Spends
             Transaction::V1 { .. }
@@ -988,6 +1061,10 @@ impl Transaction {
             } => Box::new(std::iter::empty()),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 {
+                sapling_shielded_data: None,
+                ..
+            } => Box::new(std::iter::empty()),
+            Transaction::VCrosslink {
                 sapling_shielded_data: None,
                 ..
             } => Box::new(std::iter::empty()),
@@ -1013,6 +1090,10 @@ impl Transaction {
                 sapling_shielded_data: Some(sapling_shielded_data),
                 ..
             } => Box::new(sapling_shielded_data.note_commitments()),
+            Transaction::VCrosslink {
+                sapling_shielded_data: Some(sapling_shielded_data),
+                ..
+            } => Box::new(sapling_shielded_data.note_commitments()),
 
             // No Spends
             Transaction::V1 { .. }
@@ -1028,6 +1109,10 @@ impl Transaction {
             } => Box::new(std::iter::empty()),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 {
+                sapling_shielded_data: None,
+                ..
+            } => Box::new(std::iter::empty()),
+            Transaction::VCrosslink {
                 sapling_shielded_data: None,
                 ..
             } => Box::new(std::iter::empty()),
@@ -1051,6 +1136,10 @@ impl Transaction {
                 sapling_shielded_data,
                 ..
             } => sapling_shielded_data.is_some(),
+            Transaction::VCrosslink {
+                sapling_shielded_data,
+                ..
+            } => sapling_shielded_data.is_some(),
         }
     }
 
@@ -1067,6 +1156,10 @@ impl Transaction {
             } => orchard_shielded_data.as_ref(),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 {
+                orchard_shielded_data,
+                ..
+            } => orchard_shielded_data.as_ref(),
+            Transaction::VCrosslink {
                 orchard_shielded_data,
                 ..
             } => orchard_shielded_data.as_ref(),
@@ -1196,6 +1289,7 @@ impl Transaction {
             | Transaction::V5 { .. } => Box::new(std::iter::empty()),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { .. } => Box::new(std::iter::empty()),
+            Transaction::VCrosslink { .. } => Box::new(std::iter::empty()),
         }
     }
 
@@ -1245,6 +1339,7 @@ impl Transaction {
             | Transaction::V5 { .. } => Box::new(std::iter::empty()),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { .. } => Box::new(std::iter::empty()),
+            Transaction::VCrosslink { .. } => Box::new(std::iter::empty()),
         }
     }
 
@@ -1288,6 +1383,7 @@ impl Transaction {
             | Transaction::V5 { .. } => Box::new(iter::empty()),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { .. } => Box::new(iter::empty()),
+            Transaction::VCrosslink { .. } => Box::new(iter::empty()),
         };
 
         joinsplit_value_balances.map(ValueBalance::from_sprout_amount)
@@ -1334,6 +1430,10 @@ impl Transaction {
                 sapling_shielded_data: Some(sapling_shielded_data),
                 ..
             } => sapling_shielded_data.value_balance,
+            Transaction::VCrosslink {
+                sapling_shielded_data: Some(sapling_shielded_data),
+                ..
+            } => sapling_shielded_data.value_balance,
 
             Transaction::V1 { .. }
             | Transaction::V2 { .. }
@@ -1348,6 +1448,10 @@ impl Transaction {
             } => Amount::zero(),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 {
+                sapling_shielded_data: None,
+                ..
+            } => Amount::zero(),
+            Transaction::VCrosslink {
                 sapling_shielded_data: None,
                 ..
             } => Amount::zero(),
@@ -1533,6 +1637,7 @@ impl Transaction {
             Transaction::V5 { .. } => Some(TX_V5_VERSION_GROUP_ID),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { .. } => Some(TX_V6_VERSION_GROUP_ID),
+            Transaction::VCrosslink { .. } => Some(TX_VCROSSLINK_VERSION_GROUP_ID),
         }
     }
 }
@@ -1561,6 +1666,13 @@ impl Transaction {
             }
             #[cfg(feature = "tx_v6")]
             Transaction::V6 {
+                ref mut network_upgrade,
+                ..
+            } => {
+                *network_upgrade = nu;
+                Ok(())
+            }
+            Transaction::VCrosslink {
                 ref mut network_upgrade,
                 ..
             } => {
@@ -1597,6 +1709,10 @@ impl Transaction {
                 ref mut expiry_height,
                 ..
             } => expiry_height,
+            Transaction::VCrosslink {
+                ref mut expiry_height,
+                ..
+            } => expiry_height,
         }
     }
 
@@ -1610,6 +1726,7 @@ impl Transaction {
             Transaction::V5 { ref mut inputs, .. } => inputs,
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { ref mut inputs, .. } => inputs,
+            Transaction::VCrosslink { ref mut inputs, .. } => inputs,
         }
     }
 
@@ -1641,6 +1758,10 @@ impl Transaction {
                 sapling_shielded_data: Some(sapling_shielded_data),
                 ..
             } => Some(&mut sapling_shielded_data.value_balance),
+            Transaction::VCrosslink {
+                sapling_shielded_data: Some(sapling_shielded_data),
+                ..
+            } => Some(&mut sapling_shielded_data.value_balance),
             Transaction::V1 { .. }
             | Transaction::V2 { .. }
             | Transaction::V3 { .. }
@@ -1654,6 +1775,10 @@ impl Transaction {
             } => None,
             #[cfg(feature = "tx_v6")]
             Transaction::V6 {
+                sapling_shielded_data: None,
+                ..
+            } => None,
+            Transaction::VCrosslink {
                 sapling_shielded_data: None,
                 ..
             } => None,
@@ -1707,6 +1832,7 @@ impl Transaction {
             | Transaction::V5 { .. } => Box::new(std::iter::empty()),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { .. } => Box::new(std::iter::empty()),
+            Transaction::VCrosslink { .. } => Box::new(std::iter::empty()),
         }
     }
 
@@ -1757,6 +1883,7 @@ impl Transaction {
             | Transaction::V5 { .. } => Box::new(std::iter::empty()),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { .. } => Box::new(std::iter::empty()),
+            Transaction::VCrosslink { .. } => Box::new(std::iter::empty()),
         }
     }
 
@@ -1780,6 +1907,10 @@ impl Transaction {
                 orchard_shielded_data: Some(orchard_shielded_data),
                 ..
             } => Some(orchard_shielded_data),
+            Transaction::VCrosslink {
+                orchard_shielded_data: Some(orchard_shielded_data),
+                ..
+            } => Some(orchard_shielded_data),
 
             Transaction::V1 { .. }
             | Transaction::V2 { .. }
@@ -1791,6 +1922,10 @@ impl Transaction {
             } => None,
             #[cfg(feature = "tx_v6")]
             Transaction::V6 {
+                orchard_shielded_data: None,
+                ..
+            } => None,
+            Transaction::VCrosslink {
                 orchard_shielded_data: None,
                 ..
             } => None,
@@ -1817,6 +1952,9 @@ impl Transaction {
             } => outputs,
             #[cfg(feature = "tx_v6")]
             Transaction::V6 {
+                ref mut outputs, ..
+            } => outputs,
+            Transaction::VCrosslink {
                 ref mut outputs, ..
             } => outputs,
         }

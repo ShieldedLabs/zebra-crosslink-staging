@@ -72,6 +72,7 @@
 
         inherit (flakelib)
           build-rust-workspace
+          crane-dev-shell
           links-table
           nixpkgs
           run-command
@@ -218,38 +219,25 @@
         };
 
         # TODO: BEWARE: This dev shell may have buggy deviations from the build.
-        devShells.default = (
-          let
-            mkClangShell = nixpkgs.mkShell.override { inherit (nixpkgs.llvmPackages) stdenv; };
+        devShells.default = crane-dev-shell {
+          inputsFrom = [
+            zebrad
+            zebra-book
+          ];
 
-            devShellInputs = with nixpkgs; [
-              rustup
-              mdbook
-              mdbook-mermaid
-              nixfmt
-              yamllint
-            ];
+          packages = with nixpkgs; [ cargo-nextest ];
 
-            dynlibs = with nixpkgs; [
+          LD_LIBRARY_PATH = nixpkgs.lib.makeLibraryPath (
+            with nixpkgs;
+            [
               libGL
               libxkbcommon
               xorg.libX11
               xorg.libxcb
               xorg.libXi
-            ];
-
-            crate-args = zebrad-outputs.args.crate;
-          in
-          mkClangShell (
-            crate-args
-            // {
-              # Include devShell inputs:
-              nativeBuildInputs = crate-args.nativeBuildInputs ++ devShellInputs;
-
-              LD_LIBRARY_PATH = nixpkgs.lib.makeLibraryPath dynlibs;
-            }
-          )
-        );
+            ]
+          );
+        };
       }
     );
 }

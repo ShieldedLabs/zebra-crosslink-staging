@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 zebra-chain = { path = "../zebra-chain", version = "2.0.0" }
 zebra-state = { path = "../zebra-state", version = "2.0.0" }
+zebra-node-services = { path = "../zebra-node-services", version = "1.0.1" }
 
 serde = { workspace = true, features = ["serde_derive"] }
 toml = { workspace = true }
@@ -48,6 +49,7 @@ zerocopy-derive = "0.8.25"
 blake3 = "1.8.2"
 byteorder = { workspace = true }
 ed25519-zebra = { workspace = true }
+zcash_primitives = { workspace = true }
 
 static_assertions = { workspace = true }
 
@@ -59,7 +61,7 @@ macroquad-profiler = { version = "0.2.0", optional = true }
 image = { version = "0.24", default-features = false, features = ["png", "tga"], optional = true }
 miniquad = { version = "0.4.8", optional = true }
 hex = { version = "0.4.3", features = ["serde"] }
-lazy_static = "1.5"
+lazy_static = "1.5.0"
 
 [dev-dependencies]
 zebra-test = { path = "../zebra-test", version = "1.0.0-beta.45" }
@@ -68,57 +70,6 @@ zebra-test = { path = "../zebra-test", version = "1.0.0-beta.45" }
 default = []
 viz_gui = ["macroquad", "macroquad-profiler", "image", "miniquad"]
 audio = ["macroquad/audio"]
-malachite = []
-
-[dependencies.malachitebft-app-channel]
-version = "0.5.0"
-# This adds the `informalsystems-malachitebft-app-channel` as a dependency, but exposes it
-# under `malachitebft_app_channel` instead of its full package name.
-git = "https://github.com/circlefin/malachite.git"
-rev = "8a64f82061690b70e0522b71f32152295ccb0df5"
-package = "informalsystems-malachitebft-app-channel"
-
-[dependencies.malachitebft-config]
-version = "0.5.0"
-git = "https://github.com/circlefin/malachite.git"
-rev = "8a64f82061690b70e0522b71f32152295ccb0df5"
-package = "informalsystems-malachitebft-config"
-
-[dependencies.malachitebft-proto]
-version = "0.5.0"
-git = "https://github.com/circlefin/malachite.git"
-rev = "8a64f82061690b70e0522b71f32152295ccb0df5"
-package = "informalsystems-malachitebft-proto"
-
-[dependencies.malachitebft-core-types]
-version = "0.5.0"
-git = "https://github.com/circlefin/malachite.git"
-rev = "8a64f82061690b70e0522b71f32152295ccb0df5"
-package = "informalsystems-malachitebft-core-types"
-
-[dependencies.malachitebft-app]
-version = "0.5.0"
-git = "https://github.com/circlefin/malachite.git"
-rev = "8a64f82061690b70e0522b71f32152295ccb0df5"
-package = "informalsystems-malachitebft-app"
-
-[dependencies.malachitebft-codec]
-version = "0.5.0"
-git = "https://github.com/circlefin/malachite.git"
-rev = "8a64f82061690b70e0522b71f32152295ccb0df5"
-package = "informalsystems-malachitebft-codec"
-
-[dependencies.malachitebft-core-consensus]
-version = "0.5.0"
-git = "https://github.com/circlefin/malachite.git"
-rev = "8a64f82061690b70e0522b71f32152295ccb0df5"
-package = "informalsystems-malachitebft-core-consensus"
-
-[dependencies.malachitebft-sync]
-version = "0.5.0"
-git = "https://github.com/circlefin/malachite.git"
-rev = "8a64f82061690b70e0522b71f32152295ccb0df5"
-package = "informalsystems-malachitebft-sync"
 
 [dependencies.tenderlink]
 version = "0.1.0"

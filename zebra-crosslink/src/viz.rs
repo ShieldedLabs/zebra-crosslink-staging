@@ -250,6 +250,9 @@ pub struct VizState {
     pub bft_blocks: Vec<BftBlock>,
     /// Fat pointer to the BFT tip (all other fat pointers are available at height+1)
     pub fat_pointer_to_bft_tip: FatPointerToBftBlock2,
+
+    /// Current mempool transactions
+    pub mempool_txs: Vec<zebra_chain::transaction::VerifiedUnminedTx>,
 }
 
 /// Functions & structures for serializing visualizer state to/from disk.
@@ -595,6 +598,8 @@ pub async fn service_viz_requests(
             bft_err_flags: 0,
             bft_blocks: Vec::new(),
             fat_pointer_to_bft_tip: FatPointerToBftBlock2::null(),
+
+            mempool_txs: Vec::new(),
         }),
 
         // NOTE: bitwise not of x (!x in rust) is the same as -1 - x
@@ -608,14 +613,31 @@ pub async fn service_viz_requests(
         validators_keys_to_names: HashMap::new(),
     });
 
+    let mut had_bft_string = false;
     loop {
         let old_g = VIZ_G.lock().unwrap().as_ref().unwrap().clone();
 
-        if old_g.proposed_bft_string.is_some() {
+        if let Some(ref bft_string) = old_g.proposed_bft_string {
             let mut internal = tfl_handle.internal.lock().await;
-            internal.our_set_bft_string = old_g.proposed_bft_string.clone();
-            internal.active_bft_string = old_g.proposed_bft_string.clone();
+            internal.our_set_bft_string = Some(bft_string.clone());
+            internal.active_bft_string = Some(bft_string.clone());
+
+            if !had_bft_string {
+                match push_staking_action_from_cmd_str(&call, &bft_string).await {
+                    Ok(()) => info!("successfully mempooled transaction"),
+                    Err(err) => warn!("staking command \"{bft_string}\" failed: {err}"),
+                }
+            }
         }
+        had_bft_string = old_g.proposed_bft_string.is_some();
+
+        let mempool_txs = if let Ok(MempoolResponse::FullTransactions { transactions, .. }) =
+            (call.mempool)(MempoolRequest::FullTransactions).await
+        {
+            transactions
+        } else {
+            Vec::new()
+        };
 
         if !old_g.consumed {
             std::thread::sleep(std::time::Duration::from_micros(500));
@@ -840,6 +862,7 @@ pub async fn service_viz_requests(
             bft_err_flags,
             bft_blocks,
             fat_pointer_to_bft_tip,
+            mempool_txs,
         };
 
         new_g.state = Arc::new(new_state);
@@ -1264,7 +1287,6 @@ impl VizCtx {
         }
     }
 
-
     fn push_node(
         &mut self,
         config: &VizConfig,
@@ -1493,12 +1515,20 @@ impl VizCtx {
                     if let Some(parent) = self.get_node(new_node.parent) {
                         (
                             Some(parent.pt),
-                            node_dy_from_work_difficulty(config.work_y_scale, new_node.difficulty, self.bc_work_max),
+                            node_dy_from_work_difficulty(
+                                config.work_y_scale,
+                                new_node.difficulty,
+                                self.bc_work_max,
+                            ),
                         )
                     } else if let Some(child) = self.get_node(child_ref) {
                         (
                             Some(child.pt),
-                            -node_dy_from_work_difficulty(config.work_y_scale, child.difficulty, self.bc_work_max),
+                            -node_dy_from_work_difficulty(
+                                config.work_y_scale,
+                                child.difficulty,
+                                self.bc_work_max,
+                            ),
                         )
                     } else {
                         (None, 0.)
@@ -1595,8 +1625,8 @@ impl VizCtx {
 
             let mut needs_update = true;
             if let Some(known_bc_tip) = self.get_node(self.known_bc_tip) {
-                if height_hash.0.0 < known_bc_tip.height &&
-                    self.node_is_parent_of(node_ref, self.known_bc_tip)
+                if height_hash.0 .0 < known_bc_tip.height
+                    && self.node_is_parent_of(node_ref, self.known_bc_tip)
                 {
                     needs_update = false;
                 }
@@ -2010,7 +2040,11 @@ fn checkbox(ui: &mut ui::Ui, id: ui::Id, label: &str, data: &mut bool) {
         .ui(ui, data);
 }
 
-fn node_dy_from_work_difficulty(work_y_scale: f32, difficulty: Option<CompactDifficulty>, bc_work_max: u128) -> f32 {
+fn node_dy_from_work_difficulty(
+    work_y_scale: f32,
+    difficulty: Option<CompactDifficulty>,
+    bc_work_max: u128,
+) -> f32 {
     difficulty
         .and_then(|difficulty| difficulty.to_work())
         .map_or(work_y_scale * 100., |work| {
@@ -2613,8 +2647,8 @@ pub async fn viz_main(
                 text_wnd_size,
                 |ui| {
                     let mut enter_pressed = false;
-                    enter_pressed |= ui_editbox(ui, hash!(), text_size, &mut node_str)
-                        && enter_is_pressed;
+                    enter_pressed |=
+                        ui_editbox(ui, hash!(), text_size, &mut node_str) && enter_is_pressed;
 
                     ui.same_line(text_size.x + font_size);
 
@@ -2889,7 +2923,6 @@ pub async fn viz_main(
                             solution: zebra_chain::work::equihash::Solution::for_proposal(),
                             fat_pointer_to_bft_block:
                                 zebra_chain::block::FatPointerToBftBlock::null(),
-                            temp_command_buf: zebra_chain::block::CommandBuf::empty(),
                         };
                         let id = NodeId::Hash(header.hash().0);
                         (VizHeader::BlockHeader(header), id, None)
@@ -3265,14 +3298,9 @@ pub async fn viz_main(
                         ui.input_text(hash!(), "", &mut click_node.text);
                     }
 
-                    if click_node.txs_n > 0 {
-                        ui.label(None, &format!("Transactions: {}", click_node.txs_n));
-                    }
-
                     match &click_node.header {
                         VizHeader::None => {}
                         VizHeader::BlockHeader(hdr) => {
-                            ui.label(None, &format!("CMD: '{}'", hdr.temp_command_buf.to_str()));
                             let string = format!("PoS fp all: {}", hdr.fat_pointer_to_bft_block);
                             let mut iter = string.chars();
 
@@ -3314,11 +3342,42 @@ pub async fn viz_main(
                             println!("dumped block.hex");
                         }
                     }
+
+                    if click_node.txs_n > 0 {
+                        ui.label(None, &format!("Transactions: {}", click_node.txs_n));
+                    }
+
+                    if let Some(block) = &click_node.bc_block {
+                        for tx in &block.transactions {
+                            let zebra_chain::transaction::Transaction::VCrosslink {
+                                staking_action,
+                                ..
+                            } = tx.as_ref()
+                            else {
+                                continue;
+                            };
+                            if let Some(staking_action) = staking_action {
+                                ui_color_label(
+                                    &mut ui,
+                                    &skin,
+                                    BLACK,
+                                    &format!(
+                                        " - {}: {}",
+                                        tx.hash(),
+                                        staking_action.to_cmd_string()
+                                    ),
+                                    0.5 * font_size,
+                                );
+                            }
+                        }
+                    }
                 },
             );
         }
 
-        let hover_node_link_ref = ctx.get_node(hover_node_i).and_then(|node| cross_chain_link_from_node(&ctx, node));
+        let hover_node_link_ref = ctx
+            .get_node(hover_node_i)
+            .and_then(|node| cross_chain_link_from_node(&ctx, node));
 
         // ALT: EoA
         let (mut bc_h_lo, mut bc_h_hi): (Option<u32>, Option<u32>) = (None, None);
@@ -3344,7 +3403,7 @@ pub async fn viz_main(
                 let _z = ZoneGuard::new("draw links");
 
                 fn overlaps(min_rng: f32, max_rng: f32, a: f32, b: f32) -> bool {
-                    let (bgn, end) = (flt_min(a,b), flt_max(a,b));
+                    let (bgn, end) = (flt_min(a, b), flt_max(a, b));
                     flt_max(bgn, min_rng) < flt_min(end, max_rng)
                 }
 
@@ -3353,15 +3412,16 @@ pub async fn viz_main(
                         let is_on_best_chain = if node.kind == NodeKind::BFT {
                             true
                         } else if ctx.known_bc_tip.is_some() {
-                            (ctx.known_bc_tip == i_ref ||
-                             ctx.node_is_parent_of(i_ref, ctx.known_bc_tip))
+                            (ctx.known_bc_tip == i_ref
+                                || ctx.node_is_parent_of(i_ref, ctx.known_bc_tip))
                         } else {
                             // probably shouldn't hit here, but conservatively fall back to finalized...
                             finalized_pow_blocks.contains(&BlockHash(node.hash().unwrap()))
                         };
 
                         let thick = if is_on_best_chain { 3. } else { 1. };
-                        let line = draw_arrow_between_circles(circle, parent.circle(), thick, 9., GRAY);
+                        let line =
+                            draw_arrow_between_circles(circle, parent.circle(), thick, 9., GRAY);
                         let (pt, _) = closest_pt_on_line(line, world_mouse_pt);
                         if_dev(false, || draw_x(pt, 5., 2., MAGENTA));
                     }
@@ -3370,9 +3430,9 @@ pub async fn viz_main(
                 let link_ref = cross_chain_link_from_node(&ctx, node);
                 if let Some(link) = ctx.get_node(link_ref) {
                     if overlaps(world_bbox.min.y, world_bbox.max.y, node.pt.y, link.pt.y) {
-                        let alpha = if hover_node_i.is_none() ||
-                            hover_node_i == i_ref ||
-                            hover_node_i == link_ref
+                        let alpha = if hover_node_i.is_none()
+                            || hover_node_i == i_ref
+                            || hover_node_i == link_ref
                         {
                             1.0
                         } else {
@@ -3384,7 +3444,13 @@ pub async fn viz_main(
                         } else {
                             ORANGE
                         };
-                        draw_arrow_between_circles(circle, link.circle(), 2., 9., col.with_alpha(alpha));
+                        draw_arrow_between_circles(
+                            circle,
+                            link.circle(),
+                            2.,
+                            9.,
+                            col.with_alpha(alpha),
+                        );
                     }
                 }
             }
@@ -3423,11 +3489,11 @@ pub async fn viz_main(
                 }; // TODO: depend on finality
 
                 // defocus non-selected chain
-                let alpha = if hover_node_i.is_none() ||
-                    hover_node_i == i_ref ||
-                    hover_node_link_ref == i_ref ||
-                    ctx.node_is_parent_of(hover_node_i, i_ref) ||
-                    ctx.node_is_parent_of(i_ref, hover_node_i)
+                let alpha = if hover_node_i.is_none()
+                    || hover_node_i == i_ref
+                    || hover_node_link_ref == i_ref
+                    || ctx.node_is_parent_of(hover_node_i, i_ref)
+                    || ctx.node_is_parent_of(i_ref, hover_node_i)
                 {
                     1.0
                 } else {
@@ -3591,7 +3657,12 @@ pub async fn viz_main(
                     checkbox(ui, hash!(), "Show legend", &mut config.show_legend);
                     checkbox(ui, hash!(), "Show mouse info", &mut config.show_mouse_info);
                     checkbox(ui, hash!(), "Show profiler", &mut config.show_profiler);
-                    checkbox(ui, hash!(), "Show cursor axis lines", &mut config.show_cursor_axis_lines);
+                    checkbox(
+                        ui,
+                        hash!(),
+                        "Show cursor axis lines",
+                        &mut config.show_cursor_axis_lines,
+                    );
                     checkbox(ui, hash!(), "Show BFT messages", &mut config.show_bft_msgs);
                     if !config.show_bft_msgs {
                         bft_msg_flags = 0; // prevent buildup
@@ -3654,7 +3725,12 @@ pub async fn viz_main(
                         ctx.clear_nodes();
                     }
 
-                    ui_editbox(ui, hash!(), vec2(tray_w - 4. * ch_w, font_size), &mut instr_path_str);
+                    ui_editbox(
+                        ui,
+                        hash!(),
+                        vec2(tray_w - 4. * ch_w, font_size),
+                        &mut instr_path_str,
+                    );
 
                     let path: PathBuf = instr_path_str.clone().into();
                     const NODE_LOAD_ZEBRA: usize = 0;
@@ -3716,7 +3792,12 @@ pub async fn viz_main(
                     }
 
                     {
-                        ui_editbox(ui, hash!(), vec2(tray_w - 4. * ch_w, font_size), &mut pow_block_nonce_str);
+                        ui_editbox(
+                            ui,
+                            hash!(),
+                            vec2(tray_w - 4. * ch_w, font_size),
+                            &mut pow_block_nonce_str,
+                        );
                         let try_parse: Option<u8> = pow_block_nonce_str.parse().ok();
                         if let Some(byte) = try_parse {
                             *MINER_NONCE_BYTE.lock().unwrap() = byte;
@@ -3724,8 +3805,12 @@ pub async fn viz_main(
                         checkbox(ui, hash!(), "BFT Paused", &mut bft_pause_button);
                     }
                     {
-                        let enter_pressed = ui_editbox(ui, hash!(), vec2(tray_w - 4. * ch_w, font_size), &mut edit_proposed_bft_string) &&
-                            enter_is_pressed;
+                        let enter_pressed = ui_editbox(
+                            ui,
+                            hash!(),
+                            vec2(tray_w - 4. * ch_w, font_size),
+                            &mut edit_proposed_bft_string,
+                        ) && enter_is_pressed;
 
                         if ui.button(None, "Submit BFT CMD") || enter_pressed {
                             proposed_bft_string = Some(edit_proposed_bft_string.clone());
@@ -3733,6 +3818,18 @@ pub async fn viz_main(
                         checkbox(ui, hash!(), "Wider tray", &mut tray_make_wider);
                     }
 
+                    ui.label(
+                        None,
+                        &format!("Mempool ({} txs):", g.state.mempool_txs.len()),
+                    );
+                    for tx in &g.state.mempool_txs {
+                        for str in format!("{:#}", tx.transaction.transaction).split("\n") {
+                            ui.label(None, str);
+                        }
+                    }
+
+                    ui.label(None, "");
+                    ui.label(None, "Loaded instrs:");
                     widgets::Group::new(hash!(), vec2(tray_w - 15., tray_w)).ui(ui, |mut ui| {
                         let failed_instr_idxs_lock = TEST_FAILED_INSTR_IDXS.lock();
                         let failed_instr_idxs = failed_instr_idxs_lock.as_ref().unwrap();
@@ -3944,31 +4041,43 @@ pub async fn viz_main(
         if config.show_legend {
             let font_size = 32.;
             let legend_pt = vec2(
-                window::screen_width() - 19.*ch_w,
+                window::screen_width() - 19. * ch_w,
                 (controls_wnd_size.y + 3. * font_size),
             );
-            let gap = 2.*ch_w;
-            draw_text("Legend:", vec2(legend_pt.x-gap, legend_pt.y), font_size, WHITE);
+            let gap = 2. * ch_w;
+            draw_text(
+                "Legend:",
+                vec2(legend_pt.x - gap, legend_pt.y),
+                font_size,
+                WHITE,
+            );
             draw_multiline_text(
-                &format!("\n\
+                &format!(
+                    "\n\
                     PoS to PoW link\n\
                     PoW to PoS link\n\
                     Non-finalized block\n\
-                    Finalized block\n"),
+                    Finalized block\n"
+                ),
                 legend_pt,
                 font_size,
                 None,
                 WHITE,
             );
-            let mut y = legend_pt.y + 0.75*font_size;
-            let x = legend_pt.x - 1.2*gap;
-            draw_arrow(vec2(x, y), vec2(x+gap, y), 2., 9., PINK);
+            let mut y = legend_pt.y + 0.75 * font_size;
+            let x = legend_pt.x - 1.2 * gap;
+            draw_arrow(vec2(x, y), vec2(x + gap, y), 2., 9., PINK);
             y += font_size;
-            draw_arrow(vec2(x, y), vec2(x+gap, y), 2., 9., ORANGE);
+            draw_arrow(vec2(x, y), vec2(x + gap, y), 2., 9., ORANGE);
             y += font_size;
-            draw_ring(Circle::new(x+0.5*gap, y, 0.3*font_size), 2., 1., WHITE);
+            draw_ring(
+                Circle::new(x + 0.5 * gap, y, 0.3 * font_size),
+                2.,
+                1.,
+                WHITE,
+            );
             y += font_size;
-            draw_circle(Circle::new(x+0.5*gap, y, 0.3*font_size), WHITE);
+            draw_circle(Circle::new(x + 0.5 * gap, y, 0.3 * font_size), WHITE);
         }
 
         if dev(config.show_profiler) {

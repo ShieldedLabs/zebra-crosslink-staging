@@ -1,0 +1,6 @@
+{
+    "rust-analyzer.check": {
+        "command": "check",
+        "allTargets": false
+    }
+}

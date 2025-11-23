@@ -232,7 +232,6 @@ pub fn proposal_block_from_template(
             nonce: [0; 32].into(),
             solution: Solution::for_proposal(),
             fat_pointer_to_bft_block: template.fat_pointer_to_bft_block.clone(),
-            temp_command_buf: template.temp_command_buf.clone(),
         }),
         transactions,
     })

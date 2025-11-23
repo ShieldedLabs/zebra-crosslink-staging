@@ -144,6 +144,7 @@ impl From<&Transaction> for UnminedTxId {
             V5 { .. } => Witnessed(transaction.into()),
             #[cfg(feature = "tx_v6")]
             V6 { .. } => Witnessed(transaction.into()),
+            VCrosslink { .. } => Witnessed(transaction.into()),
         }
     }
 }

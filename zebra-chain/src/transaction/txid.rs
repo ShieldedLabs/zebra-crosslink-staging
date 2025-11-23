@@ -30,6 +30,7 @@ impl<'a> TxIdBuilder<'a> {
             Transaction::V5 { .. } => self.txid_v5(),
             #[cfg(feature = "tx_v6")]
             Transaction::V6 { .. } => self.txid_v6(),
+            Transaction::VCrosslink { .. } => self.txid_vcrosslink(),
         }
     }
 
@@ -54,6 +55,11 @@ impl<'a> TxIdBuilder<'a> {
     /// Passthrough to txid_v5 for V6 transactions.
     #[cfg(feature = "tx_v6")]
     fn txid_v6(self) -> Option<Hash> {
+        self.txid_v5()
+    }
+
+    /// Passthrough to txid_v5/librustzcash for VCrosslink transactions.
+    fn txid_vcrosslink(self) -> Option<Hash> {
         self.txid_v5()
     }
 }

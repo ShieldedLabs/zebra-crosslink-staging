@@ -526,6 +526,14 @@ where
                     script_verifier,
                     cached_ffi_transaction.clone(),
                 )?,
+                Transaction::VCrosslink {
+                    ..
+                } => Self::verify_v5_transaction(
+                    &req,
+                    &network,
+                    script_verifier,
+                    cached_ffi_transaction.clone(),
+                )?,
             };
 
             if let Some(unmined_tx) = req.mempool_transaction() {
@@ -561,7 +569,14 @@ where
                 // TODO: deduplicate this code with remaining_transaction_value()?
                 miner_fee = match value_balance {
                     Ok(vb) => match vb.remaining_transaction_value() {
-                        Ok(tx_rtv) => Some(tx_rtv),
+                        Ok(tx_rtv) => Some(
+                            if let Transaction::VCrosslink{..} = *tx {
+                                // TODO: remove this complete @Hack
+                                <Amount<NonNegative>>::new_from_zec(zebra_chain::transaction::zip317::MIN_MEMPOOL_TX_FEE_RATE as i64 * 1)
+                            } else {
+                                tx_rtv
+                            }
+                        ),
                         Err(_) => return Err(TransactionError::IncorrectFee),
                     },
                     Err(_) => return Err(TransactionError::IncorrectFee),

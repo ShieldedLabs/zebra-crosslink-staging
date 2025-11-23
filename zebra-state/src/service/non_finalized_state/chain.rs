@@ -1576,6 +1576,12 @@ impl Chain {
                     sapling_shielded_data,
                     orchard_shielded_data,
                     ..
+                } | VCrosslink {
+                    inputs,
+                    outputs,
+                    sapling_shielded_data,
+                    orchard_shielded_data,
+                    ..
                 } => (
                     inputs,
                     outputs,
@@ -1756,6 +1762,12 @@ impl UpdateWith<ContextuallyVerifiedBlock> for Chain {
                     ..
                 } => (inputs, outputs, joinsplit_data, sapling_shielded_data, &None, &None),
                 V5 {
+                    inputs,
+                    outputs,
+                    sapling_shielded_data,
+                    orchard_shielded_data,
+                    ..
+                } | VCrosslink {
                     inputs,
                     outputs,
                     sapling_shielded_data,
