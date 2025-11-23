@@ -33,7 +33,7 @@ This list of [UX Goals](https://github.com/ShieldedLabs/zebra-crosslink/labels/U
 * [GH #126](https://github.com/ShieldedLabs/zebra-crosslink/issues/126): Skilled users (who understand more and can use specialized tools) run finalizers and get rewards.
 * [GH #214](https://github.com/ShieldedLabs/zebra-crosslink/issues/214): Skilled users can easily collect records of finalizer behavior and performaance.
 
-_Shielded Labs’s First Deployment of Crosslink is not done until substantial numbers of real users are actually gaining these five benefits._
+_Shielded Labs’s First Deployment of Crosslink is not done until substantial numbers of real users are actually gaining the above benefits._
 
 Deployment Goals
 ---
