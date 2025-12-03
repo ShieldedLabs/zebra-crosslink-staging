@@ -6,6 +6,10 @@ It assumes and leverages familiarity with Zcash PoW and only describes new diffe
 
 **CAVEATS:** A lot of the terminology and descriptions will be adjusted as we go to follow conventions and specifications in the [Zcash Protocol Specification](https://zips.z.cash/protocol/protocol.pdf) and the [Zcash Improvement Proposals](https://zips.z.cash).
 
+## Roles and Capabilities
+
+**TODO:** Describe the roles and their capabilities in Crosslink vs mainnet Zcash
+
 ## Changes to Transactions
 
 A new transaction format is introduced which contains a new optional field for _staking actions_, which enable operations such as staking `ZEC` to a finalizer, beginning or completing an _unstaking_ action, or _redelegating_ an existing staking position to a different delegator.
