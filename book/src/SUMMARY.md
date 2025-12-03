@@ -8,6 +8,8 @@
 - [Design](design.md)
   - [Rationale, Scope, and Goals](design/scoping.md)
     - [Deliverable Goals](design/deliverables.md)
+  - [Design in a Nutshell](design/nutshell.md)
   - [Terminology](design/terminology.md)
   - [Architectural Decision Records](design/adrs.md)
 - [Implementation](implementation.md)
+- [Style Conventions](style.md)
