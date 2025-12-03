@@ -16,11 +16,9 @@ Additionally, we introduce a new restricting consensus rule on context-free tran
 
 [^ctx-free-validity]: A context-free transaction validity check may be performed on the bytes of the transaction itself without the need to access any chain state or index.
 
-```
-Crosslink-Staking-Orchard-Restriction:
-
-  A transaction which contains any _staking actions_ must not contain any other fields contributing to the Chain Value Pool Balances _except_ Orchard actions, explicit transaction fees, and/or explicit ZEC burning fields.
-```
+> **Crosslink Staking Orchard Restriction:**
+>
+> A transaction which contains any _staking actions_ must not contain any other fields contributing to or withdrawing from the Chain Value Pool Balances _except_ Orchard actions, explicit transaction fees, and/or explicit ZEC burning fields.
 
 ## Changes to Ledger State
 
