@@ -8,7 +8,7 @@ It assumes and leverages familiarity with Zcash PoW and only describes new diffe
 
 ## Roles and Capabilities
 
-**TODO:** Describe the roles and their capabilities in Crosslink vs mainnet Zcash
+We rely on several roles in this description along with their intended capabilities. The absence of an explicit capability description for a role implies that role should not be able to perform that capability.
 
 ## Changes to Transactions
 
@@ -79,3 +79,14 @@ It bears pointing out a nuance: the Ledger State, including the Roster and the A
 ## The BFT Sub-Protocol
 
 **TODO:** Flesh out this section
+
+
+
+# TODOS from deep dive:
+
+- rewards distribution to stakers and finalizers requires changes to the Coinbase transaction.
+- how finality status is calculated
+- how BFT operates, votes, network, etc...
+- active set selection
+- quantization of amounts / time
+- the power of 10 restriction on amount is only applied to "stake" (create position)
