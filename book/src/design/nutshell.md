@@ -90,3 +90,4 @@ It bears pointing out a nuance: the Ledger State, including the Roster and the A
 - active set selection
 - quantization of amounts / time
 - the power of 10 restriction on amount is only applied to "stake" (create position)
+- how do staking actions pay fees?
