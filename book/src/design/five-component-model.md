@@ -39,28 +39,14 @@ It is the duty of the users, collectively, to hold the stakers accountable for d
 
 When considering these components, it is useful to consider scenarios where an attacker has compromised some portion of each kind of component, as a coarse means of assessing the robustness of Crosslink in maintaining the security properties.
 
-**TODO:** Rewrite these messy notes better:
+* A collusion that controlled both >½ of the hashpower and >⅔ of the stake.
+ + ...could violate finality.
 
-A collusion that controlled both >½ of the hashpower and >⅔ of the stake could violate finality.
+* A collusion that included both a majority of the miners (controlling >½ of the hashpower) and a supermajority of the finalizers (controlling >⅔ of the stake-weighted votes)
+ + ...could execute rollback and unavailability attacks.
 
 Censorship-resistance is necessary for stakers to stake, unstake, and redelegate, which means censorship-resistance is necessary for stakers to be able to perform their duty of holding the finalizers accountable. Therefore, if an attacker controls >½ of the hashpower (and is thereby able to censor), then the attacker can prevent the stakers from holding the finalizers accountable.
 
-A collusion that included both a majority of the miners (controlling >½ of the hashpower) and a supermajority of the finalizers (controlling >⅔ of the stake-weighted votes) could execute rollback and unavailability attacks.
+An important and under-investigated consideration is what security properties hold when an attacker controls a minority of the hashpower. In a pure-PoW system, an attacker that controls some hashpower but ≤½ of it can not completely censor transactions, but can force them to be delayed.
 
-
-An important and under-investigated consideration is what security properties hold when an attacker controls a minority of the hashpower. In a pure-PoW system, an attacker that controls some hashpower but ≤½ of it can not completely censor transactions, but can force the to be delayed
-
-Majority of finalisers plus minority of miners ; xxx noticeable to users (and stakers)
-
-No Crosslink, Minority miners are censorious: censorship only results in slightly longer times
-
-Crosslink, Minority miners are censorious, finalizers are non-censorious: same as above
-
-Crosslink, Minority miners are censorious, majority finalizers are in collusion: finalization will take longer (1/X where X is the percentage of censorious miners); Therefore stakers will notice. From their perspective it is no different from really poor performance or availability failures.
-
-Xxx ooh ooh timing
-
-Case 4: 
-
-10% censorious miners, 99% colluding finalizers, but the finalizers goal is to make targeted transactions take slightly longer times
-
+* A collusion that controls >⅔ of the stake and <½ of the hashpower.
