@@ -10,7 +10,7 @@ Importantly, all participants who are sufficiently in sync with the consensus ag
 
 ## _Liveness/Availability_
 
- It is possible for any user to get at least some of their transactions paying sufficiently high fees to be included in one of the next few blocks. Failure of this security property is called a “denial-of-service for blockspace attack” (aka “blockspace DoS”). Two example attacks illustrate different compromise approaches: in one case, an attacker has enough mining capacity to exclude all transactions (except perhaps their own); in another approach an attacker pays fees higher than any legitimate user for so many transactions that any other user cannot effectively get any of their transactions included.
+ It is possible for any user to get at least some of their transactions paying sufficiently high fees to be included in one of the next few blocks. Failure of this security property is called a “denial-of-service for blockspace attack” (aka “blockspace DoS”). Two example attacks illustrate different attack approaches: in one case, an attacker has enough mining capacity to exclude all transactions (except perhaps their own); in another approach an attacker pays fees higher than any legitimate user for so many transactions that any other user cannot effectively get any of their transactions included.
 
 ## _Finality Progress_
 
