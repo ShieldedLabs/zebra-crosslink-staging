@@ -153,7 +153,12 @@
           name = "zebra-book";
           src = src-book;
           buildInputs = with nixpkgs; [
+            graphviz
             mdbook
+            mdbook-admonish
+            mdbook-graphviz
+            mdbook-katex
+            mdbook-linkcheck
             mdbook-mermaid
           ];
           builder = nixpkgs.writeShellScript "${name}-builder.sh" ''

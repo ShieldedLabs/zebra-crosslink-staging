@@ -12,8 +12,9 @@
     - [User-Led Emergency Hardforks](design/userled-emergency-hardforks.md)
   - [Design in a Nutshell](design/nutshell.md)
   - [Terminology](design/terminology.md)
-  - [Architectural Decision Records](design/adrs.md)
+  - [The Crosslink 2 Construction](design/cl2-construction.md)
   - [Design Security Analysis]() # Dummy chapter: TODO
     - [Penalty for Failure to Defend](design/pffd.md)
+  - [Architectural Decision Records](design/adrs.md)
 - [Implementation](implementation.md)
 - [Style Conventions](style.md)
