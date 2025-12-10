@@ -3,9 +3,9 @@
 `zebra-crosslink` is [Shielded Labs](https://shieldedlabs.net)'s implementation of *Zcash
 Crosslink*, a hybrid PoW/PoS consensus protocol for [Zcash](https://z.cash/). Refer to the [Rationale, Scope, and Goals](design/scoping.md) to understand our effort. See [our roadmap](https://shieldedlabs.net/roadmap/) for current progress status.
 
-## Milestone 4a Workshop
+## Prototype Workshops
 
-If you're here to participate in the Milestone 4a Workshop (either during or after the event), please see the [Milestone 4a Workshop](milestone-4a-workshop.md).
+Shielded Labs hosts semi-regular workshops as the prototype progresses; if you're interested in joining, get in touch!
 
 ## Prototype Codebase
 
