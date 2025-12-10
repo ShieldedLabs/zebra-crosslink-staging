@@ -13,5 +13,7 @@
   - [Design in a Nutshell](design/nutshell.md)
   - [Terminology](design/terminology.md)
   - [Architectural Decision Records](design/adrs.md)
+  - [Design Security Analysis]() # Dummy chapter: TODO
+    - [Penalty for Failure to Defend](design/pffd.md)
 - [Implementation](implementation.md)
 - [Style Conventions](style.md)
