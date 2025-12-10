@@ -33,7 +33,7 @@ It is the job of the stakers to hold the finalisers accountable by detecting and
 
 ## Users
 
-It is the duty of the users, collectively, to hold the stakers accountable for doing their job. If the stakers fail in their duty to hold the finalizers accountable, they can be disempowered and punished for this failure by the users with an emergency user-led hard fork (which is what happened in the STEEM/HIVE hard fork).
+It is the duty of the users, collectively, to hold the stakers accountable for doing their job. If the stakers fail in their duty to hold the finalizers accountable, they can be disempowered and punished for this failure by the users with an emergency user-led hard fork (which is what happened in the STEEM/HIVE hard fork). We clarify how we envision this could work with more safety and preparedeness by the Zcash community in the [User-Led Emergency Hardforks](userled-emergency-hardforks.md).
 
 # Attacker Resource Scenarios
 
