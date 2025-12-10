@@ -1,5 +1,8 @@
 [book]
-authors = ["Shielded Labs <https://shieldedlabs.net>"]
+authors = [
+  "Shielded Labs <https://shieldedlabs.net>",
+  "Daira-Emma Hopwood",
+]
 language = "en"
 multilingual = false
 src = "src"
@@ -7,11 +10,25 @@ title = "The Zebra Crosslink Book"
 
 [preprocessor]
 
-[preprocessor.mermaid]
-command = "mdbook-mermaid"
+[preprocessor.katex]
+macros = "macros.txt"
+renderer = ["html"]
+# This is needed in order for \href and \url links to work.
+trust = true
+# Left-aligned displaymath
+fleqn = true
 
-[output]
+[output.linkcheck]
+
+[preprocessor.graphviz]
+command = "mdbook-graphviz"
+after = ["links"]
+output-to-file = true
+
+[preprocessor.admonish]
+command = "mdbook-admonish"
+assets_version = "3.0.0" # do not edit: managed by `mdbook-admonish install`
+on_failure = "bail"
 
 [output.html]
-additional-js = ["mermaid.min.js", "mermaid-init.js"]
 additional-css = ["theme/css/custom.css"]

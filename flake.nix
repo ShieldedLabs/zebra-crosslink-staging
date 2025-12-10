@@ -159,10 +159,10 @@
             mdbook-graphviz
             mdbook-katex
             mdbook-linkcheck
-            mdbook-mermaid
           ];
           builder = nixpkgs.writeShellScript "${name}-builder.sh" ''
-            if mdbook build --dest-dir "$out/book/book" "$src/book" 2>&1 | grep -E 'ERROR|WARN'
+            mdbook build --dest-dir "$out/book/book" "$src/book" 2>&1 | tee "$out/mdbook.build.log"
+            if grep -E 'ERROR|WARN' "$out/mdbook.build.log"
             then
               echo 'Failing due to mdbook errors/warnings.'
               exit 1
