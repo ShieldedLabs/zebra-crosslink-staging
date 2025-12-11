@@ -153,11 +153,18 @@
           name = "zebra-book";
           src = src-book;
           buildInputs = with nixpkgs; [
+            graphviz
             mdbook
-            mdbook-mermaid
+            mdbook-admonish
+            mdbook-graphviz
+            mdbook-katex
+            mdbook-linkcheck
           ];
           builder = nixpkgs.writeShellScript "${name}-builder.sh" ''
-            if mdbook build --dest-dir "$out/book/book" "$src/book" 2>&1 | grep -E 'ERROR|WARN'
+            mkdir "$out"
+            mdbook build --dest-dir "$out/book/book" "$src/book" 2>&1 | tee "$out/mdbook.build.log"
+            # TODO: Add tighten `grep` rgx to disallow all errors and warnings
+            if grep -E 'ERROR' "$out/mdbook.build.log"
             then
               echo 'Failing due to mdbook errors/warnings.'
               exit 1
