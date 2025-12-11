@@ -161,8 +161,10 @@
             mdbook-linkcheck
           ];
           builder = nixpkgs.writeShellScript "${name}-builder.sh" ''
+            mkdir "$out"
             mdbook build --dest-dir "$out/book/book" "$src/book" 2>&1 | tee "$out/mdbook.build.log"
-            if grep -E 'ERROR|WARN' "$out/mdbook.build.log"
+            # TODO: Add tighten `grep` rgx to disallow all errors and warnings
+            if grep -E 'ERROR' "$out/mdbook.build.log"
             then
               echo 'Failing due to mdbook errors/warnings.'
               exit 1

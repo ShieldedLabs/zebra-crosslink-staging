@@ -14,7 +14,8 @@
   - [Terminology](design/terminology.md)
   - [The Crosslink 2 Construction](design/cl2-construction.md)
   - [Design Security Analysis]() # Dummy chapter: TODO
-    - [Penalty for Failure to Defend](design/pffd.md)
+    - [Penalty for Failure to Defend](design/analysis/pffd.md)
+    - [The Crosslink 2 Construction Security Analysis](design/analysis/cl2-security-analysis.md)
   - [Architectural Decision Records](design/adrs.md)
 - [Implementation](implementation.md)
 - [Style Conventions](style.md)

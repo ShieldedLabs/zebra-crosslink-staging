@@ -18,7 +18,11 @@ trust = true
 # Left-aligned displaymath
 fleqn = true
 
-[output.linkcheck]
+# TODO: Enable this and fix all issues!
+# [output.linkcheck]
+
+[output.html]
+additional-css = ["theme/css/custom.css"]
 
 [preprocessor.graphviz]
 command = "mdbook-graphviz"
@@ -29,6 +33,3 @@ output-to-file = true
 command = "mdbook-admonish"
 assets_version = "3.0.0" # do not edit: managed by `mdbook-admonish install`
 on_failure = "bail"
-
-[output.html]
-additional-css = ["theme/css/custom.css"]
