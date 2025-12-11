@@ -1,5 +1,9 @@
 # Security Analysis of Crosslink 2
 
+```admonish warning "Attention"
+This section is an almost direct paste from a section found in `https://github.com/Electric-Coin-Company/tfl-book` for the purposes of precisely committing to a (potentially incomplete, confusing, or inconsistent) precise set of book contents for a security design review. We believe this respects the license of the other repository.
+```
+
 This document analyzes the security of Crosslink 2 in terms of liveness and safety. It assumes that you have read [The Crosslink 2 Construction](./construction.md) which defines the protocol.
 
 ## Liveness argument

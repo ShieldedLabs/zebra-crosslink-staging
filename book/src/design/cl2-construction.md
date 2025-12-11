@@ -1,5 +1,9 @@
 # The Crosslink 2 Construction
 
+```admonish warning "Attention"
+This section is an almost direct paste from a section found in `https://github.com/Electric-Coin-Company/tfl-book` for the purposes of precisely committing to a (potentially incomplete, confusing, or inconsistent) precise set of book contents for a security design review. We believe this respects the license of the other repository.
+```
+
 We are now ready to give a description of a protocol that takes into account the issues described in [Notes on Snap‑and‑Chat](./notes-on-snap-and-chat.md), and that implements [bounded availability](./the-arguments-for-bounded-availability-and-finality-overrides.md#what-is-bounded-availability). We call this the “Crosslink” construction; more precisely the version described here is “Crosslink 2”.
 
 This description will attempt to be self-contained, but [[NTT2020]](https://eprint.iacr.org/2020/1091.pdf) ([arXiv version](https://arxiv.org/pdf/2009.04987.pdf)) is useful background on the general model of Ebb-and-Flow protocols.
