@@ -16,9 +16,15 @@ We rely on several roles described in [the Five Component Model](five-component-
 
 The _coinbase transaction_ is an exceptional transaction Zcash inherited from Bitcoin which follows exceptional rules, including the distribution of newly issued tokens. This transaction is created by a block's miner.
 
-The consensus rules are updated to require this transaction to make transfers of a portion of newly issued ZEC dedicated to Crosslink rewards in the current block, $R$, which is distributed to finalizers and stakers proportionally to their _reward slice_, $S_{participant}$. This is calculated as follows where we let $W_{participant}$ be the total stake weight for that participant:
+The consensus rules are updated to require this transaction to make transfers of a portion of newly issued ZEC dedicated to Crosslink rewards _only when_ this block updates finality to a greater height, and then as the sum of all _pending finalization rewards_ since the previous finalization.
 
-- For finalizers in the _active set_ (defined [below](#the-roster)): $S_{finalizer} = COMMISSION_FEE_RATE * \frac{W_{finalizer}}{W_total}$
+For each block produced which does not update finality, the per-block Crosslink rewards are collected into a running total, and a block which updates finality must then distributed this entire pending amount to the stakers and finalizers determined from the active set used to produce the finality update.
+
+The _pending finalizaiton rewards_, $R$, in a block which updates finality must be distributed by the coinbase transaction to finalizers and stakers proportionally to their _reward slice_, $S_{participant}$, where the _active set_ (defined [below](#the-roster)) refers to the state as of the most recent final block, prior to this update.
+
+This is calculated as follows where we let $W_{participant}$ be the total stake weight for that participant:
+
+- For finalizers in the _active set_: $S_{finalizer} = COMMISSION_FEE_RATE * \frac{W_{finalizer}}{W_total}$
 
   The constant $COMMISSION_FEE_RATE = 0.1$ is a fixed protocol parameter called the _commission fee rate_.
 
