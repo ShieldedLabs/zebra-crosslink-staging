@@ -8,9 +8,29 @@ It assumes and leverages familiarity with Zcash PoW and only describes new diffe
 
 ## Roles and Capabilities
 
-We rely on several roles in this description along with their intended capabilities. The absence of an explicit capability description for a role implies that role should not be able to perform that capability.
+We rely on several roles described in [the Five Component Model](five-component-model.md) in this nutshell section along with their intended capabilities. The absence of an explicit capability description for a role implies that role should not be able to perform that capability
 
 ## Changes to Transactions
+
+### Changes to the Coinbase Transaction
+
+The _coinbase transaction_ is an exceptional transaction Zcash inherited from Bitcoin which follows exceptional rules, including the distribution of newly issued tokens. This transaction is created by a block's miner.
+
+The consensus rules are updated to require this transaction to make transfers of a portion of newly issued ZEC dedicated to Crosslink rewards in the current block, $R$, which is distributed to finalizers and stakers proportionally to their _reward slice_, $S_{participant}$. This is calculated as follows where we let $W_{participant}$ be the total stake weight for that participant:
+
+- For finalizers in the _active set_ (defined [below](#the-roster)): $S_{finalizer} = COMMISSION_FEE_RATE * \frac{W_{finalizer}}{W_total}$
+
+  The constant $COMMISSION_FEE_RATE = 0.1$ is a fixed protocol parameter called the _commission fee rate_.
+
+- For all stakers: $S_{staker} = (1.0 - COMMISSION_FEE_RATE) \frac{W_{staker}}{W_total}$
+
+  The constant $1.0 - COMMISSION_FEE_RATE = 0.9$ is called the _staker reward rate_.
+
+  Note that $W_{staker}$ is the total weight of all staking positions of the given staker _regardless_ of whether or not it is assigned to an finalizer in the _active set_.
+
+Another nuance: the sum of all commission fees and staker rewards adds up to $S_total$ *or less*, with the difference coming from stake assigned to finalizers outside the active set. 
+
+### New Transaction Format & Staking Actions
 
 A new transaction format is introduced which contains a new optional field for _staking actions_, which enable operations such as staking `ZEC` to a finalizer, beginning or completing an _unstaking_ action, or _redelegating_ an existing staking position to a different delegator.
 
@@ -24,15 +44,40 @@ Additionally, we introduce a new restricting consensus rule on context-free tran
 >
 > A transaction which contains any _staking actions_ must not contain any other fields contributing to or withdrawing from the Chain Value Pool Balances _except_ Orchard actions, explicit transaction fees, and/or explicit ZEC burning fields.
 
-### TODO
+Abstractly, the staking actions include:
 
-We need more explanation of transaction semantics:
+- _stake - This creates a new _staking position_ assigning a transparent ZEC amount, which must be a power of 10, to a finalizer and including a cryptographic signature verification key intended for only the signing-key holder of the position to redelegate or unstake.
+- _redelegate_ - This identifies a specific staking position, a new finalizer to reassign to, and a signature valid with the position's published verification key to authorize the transition.
+- _unbond_ - This initiates an "unbonding process" which puts the staking position into an _unbonding state_ and includes the ZEC amount, the current block height, and the signature verification key to authorize a later claim. Once in this state, redelegations are not valid and the ZEC amount does not contribute to staking weight for finalizers or the staker.
+- _claim_ - This action removes a position in the _unbonding state_ and contributes the bonded ZEC into the transaction's Chain Value Pool Balance, where because of the "Crosslink Staking Orchard Restriction, it may only be distributed into an Orchard destination and/or transaction fees.
 
-- staking (including amount/time quantization) 
-- unstaking (including amount/time quantization + yield/reward) 
-- redelegation
-- finalizer commission fees
-- other?
+#### Further Restrictions on Staking Actions
+
+We furthermore introduce the following consensus rule restrictions on transactions involving staking actions which rely on a _staking epoch_ design:
+
+> **Staking Epoch Definition:**
+>
+> Once Crosslink activates at block height $H_{crosslink_activation}$, _staking epochs_ begin, which are continguous spans of block heights with two phases: _staking day_ and the _locked phase_. The number of blocks for _staking day_ is a protocol parameter constant roughly equivalent to 24 hours given assumptions about the Difficulty Adjustment Algorithm. The number of blocks for the _locked phase_ is also a constant roughly equivalent to 6*24 hour periods, so that _staking day_ is approximately one day per week.
+
+Given the staking epoch definition, we introduce the following restrictions in the consensus rules:
+
+> **Locked Staking Actions Restriction:**
+>
+> If a transaction includes any staking actions *except for* redelegate, and that transaction is in a block height in a _locked phase_ of the _staking epoch_, then that block is invalid.
+
+Also:
+
+> **Unbonding Delay:**
+>
+> If a transaction is block height $H$ includes any _claim_ staking actions which refer to _unbonding state_ positions which have not existed in the unbonding state for at least one full staking epoch, that block is invalid.
+
+Note: An implication of the Unbonding Delay is that the same staking day cannot include both an _unbond_ and _claim_ for the same position.
+
+A final restriction (already mentioned above in introducing the _staking_ action is:
+
+> **Stake Action Amount Quantization:**
+>
+> If a transaction includes any staking actions with an amount which is not a power of 10 ZEC (or ZAT), that transaction is invalid.
 
 ## Changes to Ledger State
 
