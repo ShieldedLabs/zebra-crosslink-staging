@@ -16,6 +16,9 @@
   - [Design Security Analysis]() # Dummy chapter: TODO
     - [Penalty for Failure to Defend](design/analysis/pffd.md)
     - [The Crosslink 2 Construction Security Analysis](design/analysis/cl2-security-analysis.md)
+    - [Analysis History](design/analysis/history.md)
+      - [Mechanism Design Audit of Crosslink Zebra - 2025-12-11](design/analysis/history/2025-12-11-mech-design.md)
+        - [Proposal](design/analysis/history/2025-12-11-mech-design/proposal.md)
   - [Architectural Decision Records](design/adrs.md)
 - [Implementation](implementation.md)
 - [Style Conventions](style.md)
