@@ -8,6 +8,10 @@ This section is an almost direct paste from a section found in `https://github.c
 The `zebra-crosslink` design in this book diverges from this text by _not_ including "Stalled Mode" rules. This simplification to the protocol rules follows the rationale that we are already relying heavily on the stakers to guard safe operation of the protocol by redelegating appropriately to prevent hazards like BFT stalls.
 ```
 
+```admonish warning "Attention"
+The `zebra-crosslink` design does not use the "outer signature" referred to in this chapter, because this replaces a subtle security hazard which many participants could leverage maliciously to one where only the current proposer could leverage it maliciously, and we believe this trade-off is not worth it. This means a direct hash or copy of the most recent BFT finality certificate is insufficient evidence to ensure that specific bitwise copy is canonical or will become canonical in the chain.
+```
+
 We are now ready to give a description of a protocol that takes into account the issues described in [Notes on Snap‑and‑Chat](./notes-on-snap-and-chat.md), and that implements [bounded availability](./the-arguments-for-bounded-availability-and-finality-overrides.md#what-is-bounded-availability). We call this the “Crosslink” construction; more precisely the version described here is “Crosslink 2”.
 
 This description will attempt to be self-contained, but [[NTT2020]](https://eprint.iacr.org/2020/1091.pdf) ([arXiv version](https://arxiv.org/pdf/2009.04987.pdf)) is useful background on the general model of Ebb-and-Flow protocols.
