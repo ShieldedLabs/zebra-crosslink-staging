@@ -3,7 +3,7 @@
 ```admonish warning "Attention"
 This section is an almost direct paste from a section found in `https://github.com/Electric-Coin-Company/tfl-book` for the purposes of precisely committing to a (potentially incomplete, confusing, or inconsistent) precise set of book contents for a security design review.
 
-We believe this respects the license of the other repository. However, the other authors of the TFL-Book, Daira Hopwood and Jack Grigg have not reviewed and do not endorse anything found in this repository in terms of design or otherwise.
+We believe this respects the license of the other repository. However, the other authors of the TFL-Book, Daira-Emma Hopwood and Jack Grigg have not reviewed and do not necessarily endorse its content or design changes relative to Crosslink 2. Also note that any corrections made to the TFL-Book will not necessarily be reflected here.
 ```
 
 This document analyzes the security of Crosslink 2 in terms of liveness and safety. It assumes that you have read [The Crosslink 2 Construction](./construction.md) which defines the protocol.

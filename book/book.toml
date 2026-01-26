@@ -1,7 +1,7 @@
 [book]
 authors = [
   "Shielded Labs <https://shieldedlabs.net>",
-  # Note the following are primary authors of the `cl2-*.md` files which were copied and pasted from the `tfl-book` without their knowledge. They have not reviewed this book and do not endorse any of its content.
+  # Note the following are primary authors of the `cl2-*.md` files which were copied and pasted from the `tfl-book` without their prior knowledge. They have not reviewed this book and do not necessarily endorse its content or design changes relative to Crosslink 2.
   "Daira-Emma Hopwood",
   "Jack Grigg",
 ]
