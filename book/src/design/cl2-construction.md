@@ -1,7 +1,9 @@
 # The Crosslink 2 Construction
 
 ```admonish warning "Attention"
-This section is an almost direct paste from a section found in `https://github.com/Electric-Coin-Company/tfl-book` for the purposes of precisely committing to a (potentially incomplete, confusing, or inconsistent) precise set of book contents for a security design review. We believe this respects the license of the other repository.
+This section is an almost direct paste from a section found in `https://github.com/Electric-Coin-Company/tfl-book` for the purposes of precisely committing to a (potentially incomplete, confusing, or inconsistent) precise set of book contents for a security design review.
+
+We believe this respects the license of the other repository. However, the other authors of the TFL-Book, Daira-Emma Hopwood and Jack Grigg have not reviewed and do not necessarily endorse its content or design changes relative to Crosslink 2. Also note that any corrections made to the TFL-Book will not necessarily be reflected here.
 ```
 
 ```admonish warning "Attention"
