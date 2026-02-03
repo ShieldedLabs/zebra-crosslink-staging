@@ -117,10 +117,7 @@ async fn z_getstandardfees_not_enough_blocks_end_underflow() {
         .expect_err("expected not enough blocks error");
 
     assert_eq!(error.code(), i32::from(LegacyCode::Misc));
-    assert_eq!(
-        error.message(),
-        "not enough blocks to calculate median fee"
-    );
+    assert_eq!(error.message(), "not enough blocks to calculate median fee");
 
     mempool.expect_no_requests().await;
     state.expect_no_requests().await;
@@ -164,10 +161,7 @@ async fn z_getstandardfees_not_enough_blocks_start_underflow() {
         .expect_err("expected not enough blocks error");
 
     assert_eq!(error.code(), i32::from(LegacyCode::Misc));
-    assert_eq!(
-        error.message(),
-        "not enough blocks to calculate median fee"
-    );
+    assert_eq!(error.message(), "not enough blocks to calculate median fee");
 
     mempool.expect_no_requests().await;
     state.expect_no_requests().await;
@@ -274,12 +268,7 @@ async fn z_getstandardfees_block_not_found() {
     assert!(rpc_tx_queue.now_or_never().is_none());
 }
 
-fn make_block(
-    height: u32,
-    base_value: i64,
-    fee_zats: i64,
-    header: &Arc<Header>,
-) -> Arc<Block> {
+fn make_block(height: u32, base_value: i64, fee_zats: i64, header: &Arc<Header>) -> Arc<Block> {
     let coinbase_value = base_value + fee_zats;
     let coinbase_tx = make_coinbase_tx(height, coinbase_value);
     let spend_tx = make_spend_tx(coinbase_tx.as_ref(), base_value);
@@ -336,15 +325,10 @@ async fn calculate_transaction_fee_uses_tx_cache() {
 
     tx_cache.insert(prev_tx.hash(), (prev_tx.clone(), Height(1)));
 
-    let fee = calculate_transaction_fee(
-        &mut read_state,
-        &mut tx_cache,
-        &spend_tx,
-        &block_outputs,
-    )
-    .await
-    .expect("fee should be computed")
-    .expect("non-coinbase fee should exist");
+    let fee = calculate_transaction_fee(&mut read_state, &mut tx_cache, &spend_tx, &block_outputs)
+        .await
+        .expect("fee should be computed")
+        .expect("non-coinbase fee should exist");
 
     assert_eq!(fee.zatoshis(), 2);
     read_state.expect_no_requests().await;
@@ -363,18 +347,13 @@ async fn calculate_transaction_fee_fetches_prev_tx_from_read_state() {
     let prev_hash = prev_tx.hash();
     let spend_tx = make_spend_tx(prev_tx.as_ref(), 8);
 
-    let fee_fut = calculate_transaction_fee(
-        &mut read_state,
-        &mut tx_cache,
-        &spend_tx,
-        &block_outputs,
-    );
+    let fee_fut =
+        calculate_transaction_fee(&mut read_state, &mut tx_cache, &spend_tx, &block_outputs);
     let respond_fut = async move {
         let responder = read_state_handle
             .expect_request(ReadRequest::Transaction(prev_hash))
             .await;
-        let mined_tx =
-            zebra_state::MinedTx::new(prev_tx, Height(1), 1, chrono::Utc::now());
+        let mined_tx = zebra_state::MinedTx::new(prev_tx, Height(1), 1, chrono::Utc::now());
         responder.respond(ReadResponse::Transaction(Some(mined_tx)));
     };
 
