@@ -131,6 +131,7 @@ use types::{
     transaction::TransactionObject,
     unified_address::ZListUnifiedReceiversResponse,
     validate_address::ValidateAddressResponse,
+    z_getstandardfees::ZGetStandardFeesResponse,
     z_validate_address::ZValidateAddressResponse,
 };
 
@@ -593,6 +594,13 @@ pub trait Rpc {
     /// - `address`: (string, required) The zcash address to validate.
     #[method(name = "validateaddress")]
     async fn validate_address(&self, address: String) -> Result<ValidateAddressResponse>;
+
+    /// Returns standard and priority fees based on the median per-action fee.
+    ///
+    /// method: post
+    /// tags: fees
+    #[method(name = "z_getstandardfees")]
+    async fn z_getstandardfees(&self) -> Result<ZGetStandardFeesResponse>;
 
     /// Checks if a zcash address of type P2PKH, P2SH, TEX, SAPLING or UNIFIED is valid.
     /// Returns information about the given address if valid.
@@ -2698,6 +2706,91 @@ where
         validate_address(network, raw_address)
     }
 
+    async fn z_getstandardfees(&self) -> Result<ZGetStandardFeesResponse> {
+        const REORG_BUFFER: u32 = 5;
+        const LOOKBACK_WINDOW: u32 = 50;
+        const PRIORITY_MULTIPLIER: u64 = 10;
+        const NOT_ENOUGH_BLOCKS: &str = "not enough blocks to calculate median fee";
+        const BLOCK_NOT_FOUND: &str = "block not found while calculating median fee";
+
+        let tip_height = best_chain_tip_height(&self.latest_chain_tip)?;
+
+        let end_height = tip_height
+            .0
+            .checked_sub(REORG_BUFFER)
+            .ok_or_misc_error(NOT_ENOUGH_BLOCKS)?;
+
+        let start_height = end_height
+            .checked_sub(LOOKBACK_WINDOW - 1)
+            .ok_or_misc_error(NOT_ENOUGH_BLOCKS)?;
+
+        let mut read_state = self.read_state.clone();
+        let mut tx_cache: HashMap<transaction::Hash, (Arc<Transaction>, block::Height)> =
+            HashMap::new();
+        let mut per_action_fees: Vec<u64> = Vec::new();
+
+        for height in start_height..=end_height {
+            let request = ReadRequest::Block(HashOrHeight::Height(block::Height(height)));
+            let response = read_state
+                .ready()
+                .and_then(|service| service.call(request))
+                .await
+                .map_error(server::error::LegacyCode::default())?;
+
+            let block = match response {
+                ReadResponse::Block(Some(block)) => block,
+                ReadResponse::Block(None) => {
+                    return Err(ErrorObject::borrowed(
+                        server::error::LegacyCode::Misc.into(),
+                        BLOCK_NOT_FOUND,
+                        None,
+                    ))
+                }
+                _ => unreachable!("unmatched response to a block request"),
+            };
+
+            let mut block_outputs: HashMap<transparent::OutPoint, transparent::Output> =
+                HashMap::new();
+
+            for transaction in &block.transactions {
+                if !transaction.is_coinbase() {
+                    let fee = calculate_transaction_fee(
+                        &mut read_state,
+                        &mut tx_cache,
+                        transaction,
+                        &block_outputs,
+                    )
+                    .await?;
+
+                    if let Some(fee) = fee {
+                        let actions = transaction::zip317::conventional_actions(transaction) as u64;
+                        per_action_fees.push(fee.zatoshis() as u64 / actions);
+                    }
+                }
+
+                let tx_hash = transaction.hash();
+                for (index, output) in transaction.outputs().iter().enumerate() {
+                    let outpoint = transparent::OutPoint::from_usize(tx_hash, index);
+                    block_outputs.insert(outpoint, output.clone());
+                }
+            }
+        }
+
+        let median_zats = if per_action_fees.is_empty() {
+            0
+        } else {
+            per_action_fees.sort_unstable();
+            let index = (per_action_fees.len() - 1) / 2;
+            per_action_fees[index]
+        };
+        let priority_zats = median_zats.saturating_mul(PRIORITY_MULTIPLIER);
+
+        Ok(ZGetStandardFeesResponse {
+            standard_fee: median_zats,
+            priority_fee: priority_zats,
+        })
+    }
+
     async fn z_validate_address(&self, raw_address: String) -> Result<ZValidateAddressResponse> {
         let network = self.network.clone();
 
@@ -2976,6 +3069,103 @@ where
     latest_chain_tip
         .best_tip_height()
         .ok_or_misc_error("No blocks in state")
+}
+
+async fn calculate_transaction_fee<S>(
+    read_state: &mut S,
+    tx_cache: &mut HashMap<transaction::Hash, (Arc<Transaction>, block::Height)>,
+    transaction: &Arc<Transaction>,
+    block_outputs: &HashMap<transparent::OutPoint, transparent::Output>,
+) -> Result<Option<Amount<NonNegative>>>
+where
+    S: ReadStateService,
+{
+    if transaction.is_coinbase() {
+        return Ok(None);
+    }
+
+    let mut spent_utxos: HashMap<transparent::OutPoint, transparent::Utxo> = HashMap::new();
+
+    for input in transaction.inputs() {
+        if let transparent::Input::PrevOut { outpoint, .. } = input {
+            if let Some(output) = block_outputs.get(outpoint) {
+                spent_utxos.insert(
+                    *outpoint,
+                    transparent::Utxo::new(output.clone(), block::Height(0), false),
+                );
+                continue;
+            }
+
+            let (prev_tx, prev_height) = if let Some(cached) = tx_cache.get(&outpoint.hash) {
+                cached.clone()
+            } else {
+                let request = ReadRequest::Transaction(outpoint.hash);
+                let response = read_state
+                    .ready()
+                    .and_then(|service| service.call(request))
+                    .await
+                    .map_error(server::error::LegacyCode::default())?;
+
+                let mined_tx = match response {
+                    ReadResponse::Transaction(Some(mined_tx)) => mined_tx,
+                    ReadResponse::Transaction(None) => {
+                        return Err(ErrorObject::borrowed(
+                            ErrorCode::InternalError.code(),
+                            "referenced transaction not found",
+                            None,
+                        ))
+                    }
+                    _ => unreachable!("unmatched response to a transaction request"),
+                };
+
+                let entry = (mined_tx.tx, mined_tx.height);
+                tx_cache.insert(outpoint.hash, entry.clone());
+                entry
+            };
+
+            let output = prev_tx
+                .outputs()
+                .get(outpoint.index as usize)
+                .ok_or_else(|| {
+                    ErrorObject::borrowed(
+                        ErrorCode::InternalError.code(),
+                        "referenced output not found",
+                        None,
+                    )
+                })?;
+
+            let from_coinbase = prev_tx.is_coinbase();
+            spent_utxos.insert(
+                *outpoint,
+                transparent::Utxo::new(output.clone(), prev_height, from_coinbase),
+            );
+        }
+    }
+
+    let value_balance = transaction.value_balance(&spent_utxos).map_err(|_| {
+        ErrorObject::borrowed(
+            ErrorCode::InternalError.code(),
+            "failed to compute transaction value balance",
+            None,
+        )
+    })?;
+    let remaining_value = value_balance.remaining_transaction_value().map_err(|_| {
+        ErrorObject::borrowed(
+            ErrorCode::InternalError.code(),
+            "failed to compute transaction remaining value",
+            None,
+        )
+    })?;
+    let zip233_amount = transaction.zip233_amount();
+    let fee = (remaining_value - zip233_amount).map_err(|_| {
+        ErrorObject::borrowed(
+            ErrorCode::InternalError.code(),
+            "failed to compute transaction fee",
+            None,
+        )
+    })?;
+
+    Ok(Some(fee))
 }
 
 /// Response to a `getinfo` RPC request.
