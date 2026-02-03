@@ -595,7 +595,8 @@ pub trait Rpc {
     #[method(name = "validateaddress")]
     async fn validate_address(&self, address: String) -> Result<ValidateAddressResponse>;
 
-    /// Returns standard and priority fees based on the median per-action fee.
+    /// Returns standard and priority fees based on the median per-action fee,
+    /// bucketed to the nearest power of 10.
     ///
     /// method: post
     /// tags: fees
@@ -2783,10 +2784,11 @@ where
             let index = (per_action_fees.len() - 1) / 2;
             per_action_fees[index]
         };
-        let priority_zats = median_zats.saturating_mul(PRIORITY_MULTIPLIER);
+        let standard_zats = bucket_fee_power_of_10(median_zats);
+        let priority_zats = standard_zats.saturating_mul(PRIORITY_MULTIPLIER);
 
         Ok(ZGetStandardFeesResponse {
-            standard_fee: median_zats,
+            standard_fee: standard_zats,
             priority_fee: priority_zats,
         })
     }
@@ -3069,6 +3071,27 @@ where
     latest_chain_tip
         .best_tip_height()
         .ok_or_misc_error("No blocks in state")
+}
+
+fn bucket_fee_power_of_10(value: u64) -> u64 {
+    if value == 0 {
+        return 0;
+    }
+
+    let mut lower = 1u64;
+    while lower <= value / 10 {
+        lower *= 10;
+    }
+
+    let upper = lower.saturating_mul(10);
+    let lower_distance = value.saturating_sub(lower);
+    let upper_distance = upper.saturating_sub(value);
+
+    if upper_distance <= lower_distance {
+        upper
+    } else {
+        lower
+    }
 }
 
 async fn calculate_transaction_fee<S>(

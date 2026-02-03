@@ -71,8 +71,8 @@ async fn z_getstandardfees_happy_path() {
         .await
         .expect("rpc task should not panic")
         .expect("rpc should succeed");
-    assert_eq!(response.standard_fee, 25);
-    assert_eq!(response.priority_fee, 250);
+    assert_eq!(response.standard_fee, 10);
+    assert_eq!(response.priority_fee, 100);
 
     mempool.expect_no_requests().await;
     state.expect_no_requests().await;
