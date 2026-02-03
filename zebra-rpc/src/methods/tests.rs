@@ -4,5 +4,6 @@
 
 mod prop;
 mod snapshot;
+mod z_getstandardfees;
 pub mod utils;
 mod vectors;
