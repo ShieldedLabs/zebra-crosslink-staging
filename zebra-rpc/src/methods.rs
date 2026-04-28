@@ -59,7 +59,7 @@ use tower::ServiceExt;
 use tracing::Instrument;
 
 use zcash_address::{unified::Encoding, TryFromAddress};
-use zcash_primitives::consensus::Parameters;
+use zcash_protocol::consensus::{NetworkUpgrade as ZcashNetworkUpgrade, Parameters};
 
 use zebra_chain::{
     amount::{Amount, NegativeAllowed},
@@ -1879,7 +1879,7 @@ where
         let time = u32::try_from(block.header.time.timestamp())
             .expect("Timestamps of valid blocks always fit into u32.");
 
-        let sapling_nu = zcash_primitives::consensus::NetworkUpgrade::Sapling;
+        let sapling_nu = ZcashNetworkUpgrade::Sapling;
         let sapling = if network.is_nu_active(sapling_nu, height.into()) {
             match read_state
                 .ready()
@@ -1900,7 +1900,7 @@ where
         let (sapling_tree, sapling_root) =
             sapling.map_or((None, None), |(tree, root)| (Some(tree), Some(root)));
 
-        let orchard_nu = zcash_primitives::consensus::NetworkUpgrade::Nu5;
+        let orchard_nu = ZcashNetworkUpgrade::Nu5;
         let orchard = if network.is_nu_active(orchard_nu, height.into()) {
             match read_state
                 .ready()

@@ -171,6 +171,10 @@ pub enum Transaction {
         sapling_shielded_data: Option<sapling::ShieldedData<sapling::SharedAnchor>>,
         /// The orchard data for this transaction, if any.
         orchard_shielded_data: Option<orchard::ShieldedData>,
+        /// The orchard ZSA burn data for this transaction, if any.
+        orchard_zsa_burn: Option<crate::orchard_zsa::Burn>,
+        /// The orchard ZSA issue data for this transaction, if any.
+        orchard_zsa_issue_data: Option<crate::orchard_zsa::IssueData>,
     },
 }
 
@@ -1124,6 +1128,41 @@ impl Transaction {
     /// regardless of version.
     pub fn has_orchard_shielded_data(&self) -> bool {
         self.orchard_shielded_data().is_some()
+    }
+
+    /// Access the Orchard asset burns in this transaction, if there are any,
+    /// regardless of version.
+    #[cfg(all(zcash_unstable = "nu7", feature = "tx_v6"))]
+    pub fn orchard_burns(&self) -> Option<&'_ [crate::orchard_zsa::BurnItem]> {
+        match self {
+            Transaction::V1 { .. }
+            | Transaction::V2 { .. }
+            | Transaction::V3 { .. }
+            | Transaction::V4 { .. }
+            | Transaction::V5 { .. } => None,
+
+            Transaction::V6 {
+                orchard_zsa_burn, ..
+            } => orchard_zsa_burn.as_ref().map(|burn| burn.as_slice()),
+        }
+    }
+
+    /// Access the Orchard ZSA issue data in this transaction, if there is any,
+    /// regardless of version.
+    #[cfg(all(zcash_unstable = "nu7", feature = "tx_v6"))]
+    pub fn orchard_issue_data(&self) -> &Option<crate::orchard_zsa::IssueData> {
+        match self {
+            Transaction::V1 { .. }
+            | Transaction::V2 { .. }
+            | Transaction::V3 { .. }
+            | Transaction::V4 { .. }
+            | Transaction::V5 { .. } => &None,
+
+            Transaction::V6 {
+                orchard_zsa_issue_data,
+                ..
+            } => orchard_zsa_issue_data,
+        }
     }
 
     // value balances

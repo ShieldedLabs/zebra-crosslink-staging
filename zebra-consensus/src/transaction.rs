@@ -36,6 +36,7 @@ use zebra_chain::{
     },
     transparent,
 };
+use zcash_primitives::transaction as zcash_transaction;
 
 use zebra_node_services::mempool;
 use zebra_script::{CachedFfiTransaction, Sigops};
@@ -1225,12 +1226,18 @@ where
 
     /// Verifies a transaction's Orchard shielded data.
     fn verify_orchard_bundle(
-        bundle: Option<::orchard::bundle::Bundle<::orchard::bundle::Authorized, ZatBalance>>,
+        bundle: Option<zcash_transaction::OrchardBundle<::orchard::bundle::Authorized>>,
         sighash: &SigHash,
     ) -> AsyncChecks {
         let mut async_checks = AsyncChecks::new();
 
-        if let Some(bundle) = bundle {
+        if let Some(orchard_bundle) = bundle {
+            // Extract the raw bundle from the OrchardBundle enum
+            let bundle = match orchard_bundle {
+                zcash_transaction::OrchardBundle::OrchardVanilla(b) => b,
+                #[cfg(all(zcash_unstable = "nu7", feature = "tx_v6"))]
+                zcash_transaction::OrchardBundle::OrchardZSA(b) => b,
+            };
             // # Consensus
             //
             // > The proof 𝜋 MUST be valid given a primary input (cv, rt^{Orchard},

@@ -51,13 +51,13 @@ pub type ItemVerifyingKey = VerifyingKey;
 
 lazy_static::lazy_static! {
     /// The halo2 proof verifying key.
-    pub static ref VERIFYING_KEY: ItemVerifyingKey = ItemVerifyingKey::build();
+    pub static ref VERIFYING_KEY: ItemVerifyingKey = ItemVerifyingKey::build::<orchard::flavor::OrchardVanilla>();
 }
 
 /// A Halo2 verification item, used as the request type of the service.
 #[derive(Clone, Debug)]
 pub struct Item {
-    bundle: orchard::bundle::Bundle<orchard::bundle::Authorized, ZatBalance>,
+    bundle: orchard::bundle::Bundle<orchard::bundle::Authorized, ZatBalance, orchard::flavor::OrchardVanilla>,
     sighash: SigHash,
 }
 
@@ -70,7 +70,7 @@ impl RequestWeight for Item {
 impl Item {
     /// Creates a new [`Item`] from a bundle and sighash.
     pub fn new(
-        bundle: orchard::bundle::Bundle<orchard::bundle::Authorized, ZatBalance>,
+        bundle: orchard::bundle::Bundle<orchard::bundle::Authorized, ZatBalance, orchard::flavor::OrchardVanilla>,
         sighash: SigHash,
     ) -> Self {
         Self { bundle, sighash }
