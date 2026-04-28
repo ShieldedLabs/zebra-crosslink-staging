@@ -6,6 +6,7 @@ use halo2::pasta::pallas;
 
 use orchard::issuance::{IssueAction, IssueBundle, Signed};
 
+#[cfg(zcash_unstable = "nu7")]
 use zcash_primitives::transaction::components::issuance::{read_bundle, write_bundle};
 
 use crate::serialization::{SerializationError, ZcashDeserialize, ZcashSerialize};
@@ -39,12 +40,14 @@ impl IssueData {
     }
 }
 
+#[cfg(zcash_unstable = "nu7")]
 impl ZcashSerialize for Option<IssueData> {
     fn zcash_serialize<W: io::Write>(&self, writer: W) -> Result<(), io::Error> {
         write_bundle(self.as_ref().map(|issue_data| &issue_data.0), writer)
     }
 }
 
+#[cfg(zcash_unstable = "nu7")]
 impl ZcashDeserialize for Option<IssueData> {
     fn zcash_deserialize<R: io::Read>(reader: R) -> Result<Self, SerializationError> {
         Ok(read_bundle(reader)?.map(IssueData))

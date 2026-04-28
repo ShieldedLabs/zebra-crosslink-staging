@@ -19,6 +19,7 @@ use orchard::{
     Note,
 };
 
+#[cfg(zcash_unstable = "nu7")]
 use zcash_primitives::transaction::components::issuance::{read_note, write_note};
 
 use crate::transaction::{SigHash, Transaction};
@@ -34,6 +35,7 @@ impl AssetState {
     }
 
     /// Deserializes a new [`AssetState`] from its canonical byte encoding.
+    #[cfg(zcash_unstable = "nu7")]
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, io::Error> {
         use std::io::{Cursor, Read};
 
@@ -67,6 +69,7 @@ impl AssetState {
     }
 
     /// Serializes [`AssetState`] to its canonical byte encoding.
+    #[cfg(zcash_unstable = "nu7")]
     pub fn to_bytes(&self) -> Result<Vec<u8>, io::Error> {
         use std::io::Write;
 
@@ -99,6 +102,7 @@ impl From<AssetRecord> for AssetState {
 
 // Needed for the new `getassetstate` RPC endpoint in `zebra-rpc`.
 // Can't derive `Serialize` here as `orchard::AssetRecord` doesn't implement it.
+#[cfg(zcash_unstable = "nu7")]
 impl serde::Serialize for AssetState {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -168,6 +172,7 @@ impl IssuedAssetChanges {
     /// - **Without `transaction_sighashes` (None)**: Trusted validation for Checkpoint Verified Blocks
     ///   loaded during bootstrap/startup from disk. These blocks are within checkpoint ranges and
     ///   are considered trusted, so signature verification is skipped using `check_issue_bundle_without_sighash`.
+    #[cfg(all(zcash_unstable = "nu7", feature = "tx_v6"))]
     #[allow(clippy::unwrap_in_result)]
     pub fn validate_and_get_changes(
         transactions: &[Arc<Transaction>],

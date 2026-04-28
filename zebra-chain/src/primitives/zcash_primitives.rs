@@ -282,7 +282,7 @@ impl PrecomputedTxData {
     /// Returns the Orchard bundle in `tx_data`.
     pub fn orchard_bundle(
         &self,
-    ) -> Option<orchard::bundle::Bundle<orchard::bundle::Authorized, ZatBalance>> {
+    ) -> Option<zcash_primitives::transaction::OrchardBundle<orchard::bundle::Authorized>> {
         self.tx_data.orchard_bundle().cloned()
     }
 

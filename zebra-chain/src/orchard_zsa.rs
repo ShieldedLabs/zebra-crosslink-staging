@@ -7,7 +7,9 @@ mod asset_state;
 mod burn;
 mod issuance;
 
-pub(crate) use burn::{compute_burn_value_commitment, Burn, NoBurn};
+#[cfg(all(zcash_unstable = "nu7", feature = "tx_v6"))]
+pub(crate) use burn::compute_burn_value_commitment;
+pub(crate) use burn::{Burn, NoBurn};
 pub(crate) use issuance::IssueData;
 
 pub use burn::BurnItem;

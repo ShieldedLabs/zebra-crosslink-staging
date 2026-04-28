@@ -6,6 +6,7 @@ use halo2::pasta::pallas;
 
 use orchard::{note::AssetBase, value::NoteValue};
 
+#[cfg(zcash_unstable = "nu7")]
 use zcash_primitives::transaction::components::orchard::{read_burn, write_burn};
 
 use crate::{
@@ -132,6 +133,7 @@ impl AsRef<[BurnItem]> for Burn {
     }
 }
 
+#[cfg(zcash_unstable = "nu7")]
 impl ZcashSerialize for Burn {
     fn zcash_serialize<W: io::Write>(&self, mut writer: W) -> Result<(), io::Error> {
         write_burn(
@@ -141,6 +143,7 @@ impl ZcashSerialize for Burn {
     }
 }
 
+#[cfg(zcash_unstable = "nu7")]
 impl ZcashDeserialize for Burn {
     fn zcash_deserialize<R: io::Read>(mut reader: R) -> Result<Self, SerializationError> {
         Ok(Burn(
@@ -155,6 +158,7 @@ impl ZcashDeserialize for Burn {
 /// Computes the value commitment for a list of burns.
 ///
 /// For burns, the public trapdoor is always zero.
+#[cfg(all(zcash_unstable = "nu7", feature = "tx_v6"))]
 pub(crate) fn compute_burn_value_commitment(burn: &[BurnItem]) -> ValueCommitment {
     burn.iter()
         .map(|&BurnItem(asset, amount)| {
